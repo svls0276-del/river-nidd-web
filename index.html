@@ -1,0 +1,2257 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rainfall, Bacteria and Swimming Safety</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+:root {
+  --bg: #f3efe3;
+  --panel: rgba(255, 251, 244, 0.9);
+  --panel-border: rgba(76, 67, 48, 0.16);
+  --ink: #1f2d24;
+  --muted: #5c665d;
+  --accent: #23695a;
+  --accent-soft: #d1ebe3;
+  --river: #5ea7d8;
+  --warm: #d67f33;
+  --shadow: 0 18px 60px rgba(54, 43, 18, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "DM Sans", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at top left, rgba(214, 127, 51, 0.18), transparent 30%),
+    radial-gradient(circle at right, rgba(35, 105, 90, 0.16), transparent 35%),
+    linear-gradient(180deg, #f7f3e7 0%, #efe6d7 100%);
+}
+
+.page-shell {
+  width: min(1480px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 24px 0 40px;
+}
+
+.hero {
+  padding: 24px;
+}
+
+.eyebrow,
+.map-kicker {
+  margin: 0 0 8px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+.hero-subtitle {
+  margin: 14px 0 0;
+  font-size: 0.98rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: "Fraunces", serif;
+  line-height: 1.05;
+}
+
+h1 {
+  max-width: 28ch;
+  font-family: "Times New Roman", Times, serif;
+  font-size: clamp(1.7rem, 3vw, 2.7rem);
+  line-height: 1.08;
+}
+
+h2 {
+  font-size: 1.55rem;
+}
+
+h3 {
+  font-size: 1.08rem;
+}
+
+.intro {
+  max-width: 64rem;
+  margin-top: 16px;
+  font-size: 1.08rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+
+.findings-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+  align-items: stretch;
+}
+
+.finding-card,
+.panel,
+.detail-block {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+}
+
+.finding-card {
+  border-radius: 24px;
+  padding: 14px 15px;
+  min-width: 0;
+}
+
+.finding-card h3 {
+  font-size: 0.95rem;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.finding-card p {
+  margin: 8px 0 0;
+  font-size: 0.84rem;
+  line-height: 1.42;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.story-layout {
+  display: grid;
+  grid-template-columns: 320px minmax(480px, 1fr) 360px;
+  gap: 18px;
+  align-items: start;
+}
+
+.panel {
+  border-radius: 28px;
+  backdrop-filter: blur(14px);
+}
+
+.story-panel,
+.evidence-panel {
+  padding: 24px;
+}
+
+.map-panel {
+  padding: 20px;
+}
+
+.scatter-wrap {
+  margin-top: 18px;
+  padding: 10px 6px 0;
+}
+
+.scatter-header {
+  padding-bottom: 10px;
+}
+
+.scatter-grid-wrap {
+  display: grid;
+  gap: 14px;
+}
+
+.panel-header {
+  padding-bottom: 8px;
+}
+
+.story-tabs {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+button,
+select {
+  font: inherit;
+}
+
+.story-tabs button {
+  border: 1px solid rgba(35, 105, 90, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--ink);
+  border-radius: 18px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.story-tabs button:hover,
+.story-tabs button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.story-tabs button.active {
+  background: var(--accent);
+  color: white;
+}
+
+.story-copy {
+  margin-top: 18px;
+}
+
+.story-copy p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.metric-switch {
+  margin-top: 18px;
+}
+
+.metric-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.metric-tabs button {
+  flex: 1;
+  border: 1px solid rgba(35, 105, 90, 0.18);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+}
+
+.metric-tabs button:hover,
+.metric-tabs button:focus-visible {
+  transform: translateY(-1px);
+}
+
+.metric-tabs button.active {
+  background: var(--accent);
+  color: white;
+}
+
+#driver-switch-wrap {
+  display: none;
+}
+
+#rainfall-condition-wrap {
+  display: none;
+}
+
+#lido-case-wrap {
+  display: none;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.stat-card {
+  background: rgba(255, 255, 255, 0.74);
+  border-radius: 18px;
+  padding: 14px;
+  min-width: 0;
+}
+
+.stat-card strong {
+  display: block;
+  font-size: 1.45rem;
+  font-family: "Fraunces", serif;
+  line-height: 1.12;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.stat-card span {
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.stat-card-compact-value strong {
+  font-size: 1.18rem;
+}
+
+.notes {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 22px;
+  background: rgba(34, 53, 40, 0.06);
+}
+
+.notes ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.map-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-end;
+  padding: 8px 10px 18px;
+}
+
+.legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.legend-scale {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.legend-scale-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, hsl(160 65% 70%) 0%, hsl(85 65% 56%) 50%, hsl(10 65% 44%) 100%);
+  border: 1px solid rgba(35, 105, 90, 0.14);
+}
+
+.legend-scale-labels {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.scatter-header {
+  align-items: flex-start;
+}
+
+.scatter-legend {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+  max-width: 320px;
+}
+
+.scatter-legend-group {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(35, 105, 90, 0.1);
+}
+
+.scatter-legend-title {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.scatter-legend-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.scatter-legend .legend-item {
+  font-size: 0.76rem;
+}
+
+.legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+#river-map {
+  width: 100%;
+  height: 760px;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(35, 105, 90, 0.12);
+}
+
+#ecoli-scatter,
+#ie-scatter {
+  width: 100%;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(246, 241, 232, 0.92));
+  border: 1px solid rgba(35, 105, 90, 0.12);
+}
+
+.scatter-axis,
+.scatter-grid {
+  stroke: rgba(92, 102, 93, 0.26);
+}
+
+.scatter-grid {
+  stroke-dasharray: 5 7;
+}
+
+.scatter-axis-label,
+.scatter-tick {
+  fill: var(--muted);
+  font-size: 12px;
+}
+
+.scatter-good-line {
+  stroke: #2f6f97;
+  stroke-width: 2;
+  stroke-dasharray: 8 6;
+}
+
+.scatter-good-label {
+  fill: #2f6f97;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scatter-sufficient-line {
+  stroke: #d86a2b;
+  stroke-width: 2;
+  stroke-dasharray: 10 6;
+}
+
+.scatter-sufficient-label {
+  fill: #d86a2b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.scatter-p90 {
+  fill: #ffffff;
+  stroke: #111827;
+  stroke-width: 2;
+}
+
+.scatter-p95 {
+  fill: #111827;
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.scatter-percentile-label {
+  fill: #111827;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.scatter-note {
+  margin: 10px 4px 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.case-series-ecoli {
+  fill: none;
+  stroke: #d67f33;
+  stroke-width: 3;
+}
+
+.case-series-ie {
+  fill: none;
+  stroke: #2f6f97;
+  stroke-width: 3;
+}
+
+.case-series-rain {
+  fill: none;
+  stroke: #23695a;
+  stroke-width: 3;
+}
+
+.case-series-point {
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+.case-series-point.episode {
+  stroke: #7a1f12;
+  stroke-width: 3;
+}
+
+.case-highlight-ring {
+  animation: casePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes casePulse {
+  0% { transform: scale(1); opacity: 0.95; }
+  50% { transform: scale(1.08); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 0.95; }
+}
+
+.legend-swatch-outline {
+  background: #ffffff;
+  border: 2px solid #111827;
+}
+
+.legend-swatch-square {
+  border-radius: 3px;
+  background: #111827;
+  border: 1.5px solid #ffffff;
+  box-shadow: 0 0 0 1px #111827;
+}
+
+.legend-line-good,
+.legend-line-sufficient {
+  width: 18px;
+  height: 0;
+  border-radius: 0;
+}
+
+.legend-line-good {
+  border-top: 2px dashed #2f6f97;
+}
+
+.legend-line-sufficient {
+  border-top: 2px dashed #d86a2b;
+}
+
+.leaflet-container {
+  font: inherit;
+}
+
+.site-rank-marker {
+  background: transparent;
+  border: 0;
+}
+
+.site-rank-chip {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 251, 244, 0.96);
+  border: 1px solid rgba(35, 105, 90, 0.2);
+  box-shadow: 0 8px 18px rgba(31, 45, 36, 0.14);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.evidence-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.detail-block {
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.detail-block p {
+  margin: 8px 0 0;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.site-bars,
+.bucket-summary {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.bar-row {
+  display: grid;
+  gap: 8px;
+}
+
+.bar-row header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+}
+
+.bar-track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(35, 105, 90, 0.1);
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--warm) 100%);
+}
+
+.classification-row {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(35, 105, 90, 0.12);
+}
+
+.classification-row header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.classification-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(243, 239, 227, 0.9);
+}
+
+.classification-badge .legend-swatch {
+  flex: none;
+}
+
+.classification-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.classification-metric {
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(243, 239, 227, 0.82);
+}
+
+.classification-metric strong {
+  display: block;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.classification-metric span {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.95rem;
+}
+
+.bucket-card {
+  border-radius: 18px;
+  padding: 14px;
+  background: rgba(243, 239, 227, 0.82);
+}
+
+.bucket-card strong {
+  display: block;
+}
+
+.bucket-card span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.bucket-card p {
+  margin-top: 6px;
+}
+
+.lido-case-snapshot {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.lido-case-intro {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.lido-case-compare {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lido-case-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.76);
+  border: 1px solid rgba(35, 105, 90, 0.12);
+}
+
+.lido-case-card.episode {
+  background: linear-gradient(180deg, rgba(214, 127, 51, 0.18), rgba(255, 255, 255, 0.82));
+  border-color: rgba(214, 127, 51, 0.28);
+}
+
+.lido-case-card strong,
+.lido-case-timeline-card strong {
+  display: block;
+}
+
+.lido-case-card span,
+.lido-case-timeline-card span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.lido-case-card p,
+.lido-case-timeline-card p {
+  margin-top: 8px;
+}
+
+.lido-case-value {
+  margin-top: 10px;
+  font-family: "Fraunces", serif;
+  font-size: 1.45rem;
+}
+
+.lido-case-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.lido-case-timeline-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(243, 239, 227, 0.82);
+  border: 1px solid rgba(35, 105, 90, 0.1);
+}
+
+.lido-case-timeline-card.episode {
+  background: rgba(214, 127, 51, 0.16);
+  border-color: rgba(214, 127, 51, 0.24);
+}
+
+.lido-case-timeline-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+
+.lido-case-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(35, 105, 90, 0.1);
+  overflow: hidden;
+}
+
+.lido-case-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #23695a 0%, #d67f33 100%);
+}
+
+.lido-case-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .lido-case-compare {
+    grid-template-columns: 1fr;
+  }
+}
+
+select {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(35, 105, 90, 0.18);
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+@media (max-width: 1220px) {
+  .story-layout {
+    grid-template-columns: 1fr;
+  }
+
+  #river-map {
+    height: 620px;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-shell {
+    width: min(100vw - 18px, 100%);
+    padding-top: 12px;
+  }
+
+  .hero,
+  .story-panel,
+  .evidence-panel,
+  .map-panel {
+    padding: 18px;
+  }
+
+  .findings-grid,
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    max-width: none;
+    font-size: 2.6rem;
+  }
+
+  #river-map {
+    height: 480px;
+  }
+
+  .scatter-legend {
+    max-width: none;
+    width: 100%;
+    justify-items: stretch;
+  }
+}
+
+</style>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <p class="eyebrow">Environment Agency workshop analysis prototype</p>
+        <h1>How does rainfall affect bacteria levels and swimming safety at local bathing sites?</h1>
+        <p class="hero-subtitle">Case study:<br />The River Nidd</p>
+        <p class="intro" id="research-question"></p>
+        <div class="findings-grid" id="findings-grid"></div>
+      </header>
+
+      <main class="story-layout">
+        <section class="panel story-panel">
+          <div class="panel-header">
+            <div>
+              <p class="map-kicker">Analysis mode</p>
+              <h2>Read the evidence</h2>
+            </div>
+          </div>
+
+          <div class="story-tabs" id="story-tabs">
+            <button data-mode="standards" class="active">1. Standards</button>
+            <button data-mode="river">2. Along the river</button>
+            <button data-mode="drivers">3. Environmental drivers</button>
+            <button data-mode="case">4. Case snapshot</button>
+            <button data-mode="mst">5. Source clues</button>
+          </div>
+
+          <div class="story-copy">
+            <h3 id="mode-title"></h3>
+            <p id="mode-summary"></p>
+          </div>
+
+          <div class="metric-switch" id="metric-switch-wrap">
+            <p class="map-kicker">Bacteria indicator</p>
+            <div class="metric-tabs" id="metric-tabs">
+              <button data-indicator="eColi" class="active">E. coli</button>
+              <button data-indicator="ie">IE</button>
+            </div>
+          </div>
+
+          <div class="metric-switch" id="driver-switch-wrap">
+            <p class="map-kicker">Environmental driver</p>
+            <div class="metric-tabs" id="driver-tabs">
+              <button data-driver="rain" class="active">Recent rainfall</button>
+              <button data-driver="level">River level</button>
+            </div>
+          </div>
+
+          <div class="metric-switch" id="rainfall-condition-wrap">
+            <p class="map-kicker">Rainfall condition</p>
+            <div class="metric-tabs" id="rainfall-condition-tabs">
+              <button data-rainfall-condition="some" class="active">Some rain</button>
+              <button data-rainfall-condition="high">High rain</button>
+            </div>
+          </div>
+
+          <div class="stat-grid" id="headline-stats"></div>
+
+          <div class="notes">
+            <h3>Method</h3>
+            <ul id="method-list"></ul>
+          </div>
+        </section>
+
+        <section class="panel map-panel">
+          <div class="map-header">
+            <div>
+              <p class="map-kicker">Spatial evidence</p>
+              <h2 id="map-title"></h2>
+            </div>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div id="river-map" aria-label="River Nidd site map"></div>
+
+          <div class="scatter-wrap">
+            <div class="map-header scatter-header">
+              <div>
+                <p class="map-kicker" id="subchart-kicker">Bacteria relationship</p>
+                <h2 id="subchart-title">Separate bacteria scatterplots</h2>
+              </div>
+              <div class="scatter-legend" id="scatter-legend"></div>
+            </div>
+            <div class="scatter-grid-wrap">
+              <svg id="ecoli-scatter" viewBox="0 0 860 280" aria-label="Scatterplot of E. coli"></svg>
+              <svg id="ie-scatter" viewBox="0 0 860 280" aria-label="Scatterplot of IE"></svg>
+            </div>
+            <p class="scatter-note" id="scatter-note"></p>
+          </div>
+        </section>
+
+        <section class="panel evidence-panel">
+          <div class="detail-block">
+            <p class="map-kicker">What the map shows</p>
+            <h2 id="selection-title"></h2>
+            <p id="selection-summary"></p>
+          </div>
+
+          <div class="detail-block">
+            <h3>Key site comparison</h3>
+            <div id="site-bars" class="site-bars"></div>
+          </div>
+
+          <div class="detail-block" id="mst-select-wrap">
+            <h3>MST date focus</h3>
+            <select id="mst-date-select"></select>
+            <p id="mst-snapshot-copy"></p>
+          </div>
+
+          <div class="detail-block">
+            <h3>Supporting evidence</h3>
+            <div id="supporting-evidence" class="bucket-summary"></div>
+          </div>
+
+          <div class="detail-block" id="lido-case-wrap">
+            <h3>Knaresborough Lido case snapshot</h3>
+            <div id="lido-case-snapshot" class="lido-case-snapshot"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.11.0/proj4.js"></script>
+    <script>
+window.RIVER_NIDD_DATA = {"story":{"researchQuestion":"How do bacterial pollution levels change from upstream to downstream on the River Nidd, and does recent rainfall amplify those differences?","notes":["Bacteria data mixes compliance and investigative samples.","MST markers are supporting evidence and should not be treated as proof of source.","Site order is inferred from the provided northing coordinate, from upstream to downstream.","Bacteria records before 1 March 2025 are excluded because the earlier period is incomplete.","River-level analysis uses a simple split above and below the overall median river level, so it indicates association rather than causation.","Rainfall-response analysis uses the first available 3-day rainfall field and compares some-rain and high-rain conditions back to a dry baseline."],"dateCutoff":"2025-03-01"},"analysis":{"findings":[{"id":"standards","title":"Lido is classed as Poor for E. coli and Poor for IE","text":"Using inland bathing-water thresholds, Lido's E. coli 95th percentile is 6310 and its IE 95th percentile is 1611."},{"id":"rain","title":"Summerbridge shows the biggest rain response","text":"Under high-rain conditions, mean E. coli at Summerbridge rises by 4073 cfu / 100ml compared with dry conditions."},{"id":"spatial","title":"Scotton Mill is the strongest persistent hotspot","text":"5 sites are poor for E. coli and 5 are poor for IE under this sample set, with Scotton Mill showing the highest mean E. coli."},{"id":"mst","title":"MST adds clues, not proof","text":"2 sites lean toward Hubac and 3 lean toward Rubac, showing that likely faecal-source signals vary along the river and by date."}],"standards":{"eColi":{"excellent95":500,"good95":1000,"sufficient90":900},"ie":{"excellent95":200,"good95":400,"sufficient90":330}},"standardsBySite":[{"site":"Pateley Bridge","siteRank":1,"sampleCount":19,"eColiP90":5320.0,"eColiP95":5579.999999999996,"ieP90":1155.9999999999993,"ieP95":1909.9999999999998,"eColiClass":"Poor","ieClass":"Poor"},{"site":"Summerbridge","siteRank":2,"sampleCount":19,"eColiP90":8399.999999999998,"eColiP95":10000.0,"ieP90":1899.9999999999986,"ieP95":3789.9999999999936,"eColiClass":"Poor","ieClass":"Poor"},{"site":"Hampsthwaite","siteRank":3,"sampleCount":19,"eColiP90":8239.999999999998,"eColiP95":10000.0,"ieP90":1803.9999999999968,"ieP95":5769.999999999989,"eColiClass":"Poor","ieClass":"Poor"},{"site":"Scotton Mill","siteRank":4,"sampleCount":19,"eColiP90":10000.0,"eColiP95":10000.0,"ieP90":3199.999999999998,"ieP95":5319.999999999989,"eColiClass":"Poor","ieClass":"Poor"},{"site":"Knaresborough Lido","siteRank":5,"sampleCount":19,"eColiP90":5412.0,"eColiP95":6309.999999999991,"ieP90":581.9999999999998,"ieP95":1610.9999999999825,"eColiClass":"Poor","ieClass":"Poor"}],"spatialGradient":[{"site":"Pateley Bridge","siteRank":1,"meanEColi":2944.7368421052633,"meanIE":494.63157894736844,"deltaFromUpstreamEColi":0.0,"deltaFromUpstreamIE":0.0},{"site":"Summerbridge","siteRank":2,"meanEColi":3309.4736842105262,"meanIE":832.2631578947369,"deltaFromUpstreamEColi":364.7368421052629,"deltaFromUpstreamIE":337.63157894736844},{"site":"Hampsthwaite","siteRank":3,"meanEColi":2644.7368421052633,"meanIE":1137.1052631578948,"deltaFromUpstreamEColi":-300.0,"deltaFromUpstreamIE":642.4736842105264},{"site":"Scotton Mill","siteRank":4,"meanEColi":6131.578947368421,"meanIE":1695.7894736842106,"deltaFromUpstreamEColi":3186.8421052631575,"deltaFromUpstreamIE":1201.157894736842},{"site":"Knaresborough Lido","siteRank":5,"meanEColi":1484.2105263157894,"meanIE":608.8421052631579,"deltaFromUpstreamEColi":-1460.526315789474,"deltaFromUpstreamIE":114.21052631578948}],"rainfallResponseBySite":[{"site":"Pateley Bridge","siteRank":1,"dryCount":4,"someRainCount":6,"highRainCount":9,"dryMeanEColi":3675.0,"someRainMeanEColi":1008.3333333333334,"highRainMeanEColi":3911.1111111111113,"someRainDeltaEColi":-2666.6666666666665,"highRainDeltaEColi":236.1111111111113,"dryMeanIE":186.0,"someRainMeanIE":317.3333333333333,"highRainMeanIE":750.0,"someRainDeltaIE":131.33333333333331,"highRainDeltaIE":564.0},{"site":"Summerbridge","siteRank":2,"dryCount":4,"someRainCount":6,"highRainCount":9,"dryMeanEColi":1140.0,"someRainMeanEColi":1900.0,"highRainMeanEColi":5213.333333333333,"someRainDeltaEColi":760.0,"highRainDeltaEColi":4073.333333333333,"dryMeanIE":182.5,"someRainMeanIE":282.1666666666667,"highRainMeanIE":1487.7777777777778,"someRainDeltaIE":99.66666666666669,"highRainDeltaIE":1305.2777777777778},{"site":"Hampsthwaite","siteRank":3,"dryCount":4,"someRainCount":6,"highRainCount":9,"dryMeanEColi":777.5,"someRainMeanEColi":1258.3333333333333,"highRainMeanEColi":4398.888888888889,"someRainDeltaEColi":480.83333333333326,"highRainDeltaEColi":3621.3888888888887,"dryMeanIE":195.0,"someRainMeanIE":330.8333333333333,"highRainMeanIE":2093.3333333333335,"someRainDeltaIE":135.83333333333331,"highRainDeltaIE":1898.3333333333335},{"site":"Scotton Mill","siteRank":4,"dryCount":4,"someRainCount":6,"highRainCount":9,"dryMeanEColi":5375.0,"someRainMeanEColi":5066.666666666667,"highRainMeanEColi":7177.777777777777,"someRainDeltaEColi":-308.33333333333303,"highRainDeltaEColi":1802.7777777777774,"dryMeanIE":1087.5,"someRainMeanIE":743.3333333333334,"highRainMeanIE":2601.1111111111113,"someRainDeltaIE":-344.16666666666663,"highRainDeltaIE":1513.6111111111113},{"site":"Knaresborough Lido","siteRank":5,"dryCount":4,"someRainCount":6,"highRainCount":9,"dryMeanEColi":202.5,"someRainMeanEColi":338.3333333333333,"highRainMeanEColi":2817.777777777778,"someRainDeltaEColi":135.83333333333331,"highRainDeltaEColi":2615.277777777778,"dryMeanIE":27.75,"someRainMeanIE":62.333333333333336,"highRainMeanIE":1231.4444444444443,"someRainDeltaIE":34.583333333333336,"highRainDeltaIE":1203.6944444444443}],"riverLevelThreshold":0.21,"riverLevelBySite":[{"site":"Pateley Bridge","siteRank":1,"lowLevelCount":10,"highLevelCount":9,"lowMeanEColi":2814.0,"highMeanEColi":3090.0,"highLowDeltaEColi":276.0,"lowMeanIE":444.8,"highMeanIE":550.0,"highLowDeltaIE":105.19999999999999},{"site":"Summerbridge","siteRank":2,"lowLevelCount":10,"highLevelCount":9,"lowMeanEColi":2746.0,"highMeanEColi":3935.5555555555557,"highLowDeltaEColi":1189.5555555555557,"lowMeanIE":909.3,"highMeanIE":746.6666666666666,"highLowDeltaIE":-162.63333333333333},{"site":"Hampsthwaite","siteRank":3,"lowLevelCount":10,"highLevelCount":9,"lowMeanEColi":2096.0,"highMeanEColi":3254.4444444444443,"highLowDeltaEColi":1158.4444444444443,"lowMeanIE":771.5,"highMeanIE":1543.3333333333333,"highLowDeltaIE":771.8333333333333},{"site":"Scotton Mill","siteRank":4,"lowLevelCount":10,"highLevelCount":9,"lowMeanEColi":5970.0,"highMeanEColi":6311.111111111111,"highLowDeltaEColi":341.1111111111113,"lowMeanIE":1399.0,"highMeanIE":2025.5555555555557,"highLowDeltaIE":626.5555555555557},{"site":"Knaresborough Lido","siteRank":5,"lowLevelCount":10,"highLevelCount":9,"lowMeanEColi":950.0,"highMeanEColi":2077.777777777778,"highLowDeltaEColi":1127.7777777777778,"lowMeanIE":163.1,"highMeanIE":1104.111111111111,"highLowDeltaIE":941.0111111111111}],"mstBySite":[{"site":"Pateley Bridge","siteRank":1,"sampleCount":6,"meanHubac":3.4500000000000006,"meanRubac":4.05,"dominantMarker":"rubac"},{"site":"Summerbridge","siteRank":2,"sampleCount":6,"meanHubac":4.383333333333334,"meanRubac":4.583333333333333,"dominantMarker":"rubac"},{"site":"Hampsthwaite","siteRank":3,"sampleCount":24,"meanHubac":4.241666666666667,"meanRubac":4.770833333333333,"dominantMarker":"rubac"},{"site":"Scotton Mill","siteRank":4,"sampleCount":6,"meanHubac":5.3999999999999995,"meanRubac":4.566666666666666,"dominantMarker":"hubac"},{"site":"Knaresborough Lido","siteRank":5,"sampleCount":29,"meanHubac":4.789655172413793,"meanRubac":4.311111111111111,"dominantMarker":"hubac"}],"lidoCaseTimeline":[{"date":"06/08/2025","time":"","timestamp":"2025-08-06T00:00:00","sampleType":"INVESTIGATIVE","eColi":943.333333,"ie":97.4,"riverLevel":0.0,"rain72h":14.45},{"date":"07/08/2025","time":"11:47:00","timestamp":"2025-08-07T11:47:00","sampleType":"COMPLIANCE","eColi":430.0,"ie":110.0,"riverLevel":0.51,"rain72h":2.06},{"date":"14/08/2025","time":"15:10:00","timestamp":"2025-08-14T15:10:00","sampleType":"COMPLIANCE","eColi":110.0,"ie":27.0,"riverLevel":0.0,"rain72h":0.09},{"date":"18/08/2025","time":"11:20:00","timestamp":"2025-08-18T11:20:00","sampleType":"COMPLIANCE","eColi":110.0,"ie":10.0,"riverLevel":0.0,"rain72h":0.0},{"date":"20/08/2025","time":"","timestamp":"2025-08-20T00:00:00","sampleType":"INVESTIGATIVE","eColi":162.6,"ie":24.8,"riverLevel":0.34,"rain72h":0.51},{"date":"27/08/2025","time":"14:03:00","timestamp":"2025-08-27T14:03:00","sampleType":"COMPLIANCE","eColi":200.0,"ie":73.0,"riverLevel":5.35,"rain72h":6.53},{"date":"02/09/2025","time":"13:05:00","timestamp":"2025-09-02T13:05:00","sampleType":"COMPLIANCE","eColi":420.0,"ie":27.0,"riverLevel":0.2,"rain72h":4.43},{"date":"03/09/2025","time":"","timestamp":"2025-09-03T00:00:00","sampleType":"INVESTIGATIVE","eColi":345.333333,"ie":100.866667,"riverLevel":6.59,"rain72h":9.3},{"date":"09/09/2025","time":"","timestamp":"2025-09-09T00:00:00","sampleType":"INVESTIGATIVE","eColi":405.333333,"ie":50.466667,"riverLevel":0.0,"rain72h":4.25},{"date":"10/09/2025","time":"","timestamp":"2025-09-10T00:00:00","sampleType":"INVESTIGATIVE","eColi":574.666667,"ie":87.066667,"riverLevel":8.01,"rain72h":8.88},{"date":"11/09/2025","time":"","timestamp":"2025-09-11T00:00:00","sampleType":"COMPLIANCE","eColi":5290.0,"ie":160.0,"riverLevel":8.41,"rain72h":16.42},{"date":"16/09/2025","time":"","timestamp":"2025-09-16T00:00:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":6626.666667,"riverLevel":4.4,"rain72h":36.15},{"date":"23/09/2025","time":"13:25:00","timestamp":"2025-09-23T13:25:00","sampleType":"COMPLIANCE","eColi":5900.0,"ie":790.0,"riverLevel":0.0,"rain72h":6.86}],"lidoCaseCompare":{"20/08/2025":{"date":"20/08/2025","time":"","timestamp":"2025-08-20T00:00:00","sampleType":"INVESTIGATIVE","eColi":162.6,"ie":24.8,"riverLevel":0.34,"rain72h":0.51},"16/09/2025":{"date":"16/09/2025","time":"","timestamp":"2025-09-16T00:00:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":6626.666667,"riverLevel":4.4,"rain72h":36.15}}},"locations":[{"site":"Pateley Bridge","x":415715.0,"y":465548.0},{"site":"Summerbridge","x":420057.0,"y":462246.0},{"site":"Hampsthwaite","x":425789.0,"y":459084.0},{"site":"Scotton Mill","x":431524.0,"y":458499.0},{"site":"Knaresborough Lido","x":435804.0,"y":455508.0}],"siteSummaries":[{"site":"Pateley Bridge","x":415715.0,"y":465548.0,"siteRank":1,"sampleCount":19,"meanEColi":2944.7368421052633,"medianEColi":2700.0,"meanIE":494.63157894736844,"medianIE":270.0,"meanRain24h":5.667894736842106,"meanRain48h":5.667894736842106,"meanRain72h":8.877368421052632,"meanRain120h":15.136842105263156,"meanRain168h":19.963684210526317},{"site":"Summerbridge","x":420057.0,"y":462246.0,"siteRank":2,"sampleCount":19,"meanEColi":3309.4736842105262,"medianEColi":2700.0,"meanIE":832.2631578947369,"medianIE":260.0,"meanRain24h":5.667894736842106,"meanRain48h":5.667894736842106,"meanRain72h":8.877368421052632,"meanRain120h":15.136842105263156,"meanRain168h":19.963684210526317},{"site":"Hampsthwaite","x":425789.0,"y":459084.0,"siteRank":3,"sampleCount":19,"meanEColi":2644.7368421052633,"medianEColi":1300.0,"meanIE":1137.1052631578948,"medianIE":340.0,"meanRain24h":5.667894736842106,"meanRain48h":5.667894736842106,"meanRain72h":8.877368421052632,"meanRain120h":15.136842105263156,"meanRain168h":19.963684210526317},{"site":"Scotton Mill","x":431524.0,"y":458499.0,"siteRank":4,"sampleCount":19,"meanEColi":6131.578947368421,"medianEColi":5600.0,"meanIE":1695.7894736842106,"medianIE":880.0,"meanRain24h":5.667894736842106,"meanRain48h":5.667894736842106,"meanRain72h":8.877368421052632,"meanRain120h":15.136842105263156,"meanRain168h":19.963684210526317},{"site":"Knaresborough Lido","x":435804.0,"y":455508.0,"siteRank":5,"sampleCount":19,"meanEColi":1484.2105263157894,"medianEColi":420.0,"meanIE":608.8421052631579,"medianIE":64.0,"meanRain24h":5.667894736842106,"meanRain48h":5.667894736842106,"meanRain72h":8.877368421052632,"meanRain120h":15.136842105263156,"meanRain168h":19.963684210526317}],"samples":[{"sampleId":27,"site":"Hampsthwaite","siteRank":3,"date":"16/05/2025","time":"13:35:00","timestamp":"2025-05-16T13:35:00","sampleType":"INVESTIGATIVE","eColi":230.0,"ie":10.0,"logEColi":2.361728,"logIE":1.0,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.0,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.0,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":25,"site":"Knaresborough Lido","siteRank":5,"date":"16/05/2025","time":"14:42:00","timestamp":"2025-05-16T14:42:00","sampleType":"COMPLIANCE","eColi":200.0,"ie":10.0,"logEColi":2.30103,"logIE":1.0,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.0,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.0,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":29,"site":"Pateley Bridge","siteRank":1,"date":"16/05/2025","time":"12:26:00","timestamp":"2025-05-16T12:26:00","sampleType":"INVESTIGATIVE","eColi":1500.0,"ie":54.0,"logEColi":3.176091,"logIE":1.732394,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.0,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.0,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":26,"site":"Scotton Mill","siteRank":4,"date":"16/05/2025","time":"14:03:00","timestamp":"2025-05-16T14:03:00","sampleType":"INVESTIGATIVE","eColi":5400.0,"ie":900.0,"logEColi":3.732394,"logIE":2.954243,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.0,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.0,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":28,"site":"Summerbridge","siteRank":2,"date":"16/05/2025","time":"13:09:00","timestamp":"2025-05-16T13:09:00","sampleType":"INVESTIGATIVE","eColi":340.0,"ie":36.0,"logEColi":2.531479,"logIE":1.556303,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.0,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.0,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":32,"site":"Hampsthwaite","siteRank":3,"date":"22/05/2025","time":"11:13:00","timestamp":"2025-05-22T11:13:00","sampleType":"INVESTIGATIVE","eColi":250.0,"ie":45.0,"logEColi":2.39794,"logIE":1.653213,"riverLevel":0.21,"rain24h":0.21,"rain48h":0.21,"rain72h":1.91,"rain120h":1.97,"rain168h":1.97,"lag24h":0.0,"lag48h":1.7,"lag72h":0.06,"lag168h":0.0,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":30,"site":"Knaresborough Lido","siteRank":5,"date":"22/05/2025","time":"13:45:00","timestamp":"2025-05-22T13:45:00","sampleType":"COMPLIANCE","eColi":140.0,"ie":36.0,"logEColi":2.146128,"logIE":1.556303,"riverLevel":0.21,"rain24h":0.21,"rain48h":0.21,"rain72h":1.91,"rain120h":1.97,"rain168h":1.97,"lag24h":0.0,"lag48h":1.7,"lag72h":0.06,"lag168h":0.0,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":34,"site":"Pateley Bridge","siteRank":1,"date":"22/05/2025","time":"12:50:00","timestamp":"2025-05-22T12:50:00","sampleType":"INVESTIGATIVE","eColi":680.0,"ie":54.0,"logEColi":2.832509,"logIE":1.732394,"riverLevel":0.21,"rain24h":0.21,"rain48h":0.21,"rain72h":1.91,"rain120h":1.97,"rain168h":1.97,"lag24h":0.0,"lag48h":1.7,"lag72h":0.06,"lag168h":0.0,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":31,"site":"Scotton Mill","siteRank":4,"date":"22/05/2025","time":"10:28:00","timestamp":"2025-05-22T10:28:00","sampleType":"INVESTIGATIVE","eColi":4600.0,"ie":730.0,"logEColi":3.662758,"logIE":2.863323,"riverLevel":0.21,"rain24h":0.21,"rain48h":0.21,"rain72h":1.91,"rain120h":1.97,"rain168h":1.97,"lag24h":0.0,"lag48h":1.7,"lag72h":0.06,"lag168h":0.0,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":33,"site":"Summerbridge","siteRank":2,"date":"22/05/2025","time":"11:52:00","timestamp":"2025-05-22T11:52:00","sampleType":"INVESTIGATIVE","eColi":1200.0,"ie":63.0,"logEColi":3.079181,"logIE":1.799341,"riverLevel":0.21,"rain24h":0.21,"rain48h":0.21,"rain72h":1.91,"rain120h":1.97,"rain168h":1.97,"lag24h":0.0,"lag48h":1.7,"lag72h":0.06,"lag168h":0.0,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":37,"site":"Hampsthwaite","siteRank":3,"date":"31/05/2025","time":"14:05:00","timestamp":"2025-05-31T14:05:00","sampleType":"INVESTIGATIVE","eColi":560.0,"ie":240.0,"logEColi":2.748188,"logIE":2.380211,"riverLevel":1.48,"rain24h":4.13,"rain48h":4.13,"rain72h":21.82,"rain120h":25.75,"rain168h":45.82,"lag24h":2.65,"lag48h":17.69,"lag72h":0.21,"lag168h":4.67,"rainBucket":"recent-rain","rainResponseBucket":"high-rain"},{"sampleId":35,"site":"Knaresborough Lido","siteRank":5,"date":"31/05/2025","time":"15:30:00","timestamp":"2025-05-31T15:30:00","sampleType":"COMPLIANCE","eColi":900.0,"ie":210.0,"logEColi":2.954243,"logIE":2.322219,"riverLevel":1.48,"rain24h":4.13,"rain48h":4.13,"rain72h":21.82,"rain120h":25.75,"rain168h":45.82,"lag24h":2.65,"lag48h":17.69,"lag72h":0.21,"lag168h":4.67,"rainBucket":"recent-rain","rainResponseBucket":"high-rain"},{"sampleId":39,"site":"Pateley Bridge","siteRank":1,"date":"31/05/2025","time":"13:00:00","timestamp":"2025-05-31T13:00:00","sampleType":"INVESTIGATIVE","eColi":2300.0,"ie":230.0,"logEColi":3.361728,"logIE":2.361728,"riverLevel":1.48,"rain24h":4.13,"rain48h":4.13,"rain72h":21.82,"rain120h":25.75,"rain168h":45.82,"lag24h":2.65,"lag48h":17.69,"lag72h":0.21,"lag168h":4.67,"rainBucket":"recent-rain","rainResponseBucket":"high-rain"},{"sampleId":36,"site":"Scotton Mill","siteRank":4,"date":"31/05/2025","time":"14:50:00","timestamp":"2025-05-31T14:50:00","sampleType":"INVESTIGATIVE","eColi":5600.0,"ie":880.0,"logEColi":3.748188,"logIE":2.944483,"riverLevel":1.48,"rain24h":4.13,"rain48h":4.13,"rain72h":21.82,"rain120h":25.75,"rain168h":45.82,"lag24h":2.65,"lag48h":17.69,"lag72h":0.21,"lag168h":4.67,"rainBucket":"recent-rain","rainResponseBucket":"high-rain"},{"sampleId":38,"site":"Summerbridge","siteRank":2,"date":"31/05/2025","time":"13:35:00","timestamp":"2025-05-31T13:35:00","sampleType":"INVESTIGATIVE","eColi":650.0,"ie":120.0,"logEColi":2.812913,"logIE":2.079181,"riverLevel":1.48,"rain24h":4.13,"rain48h":4.13,"rain72h":21.82,"rain120h":25.75,"rain168h":45.82,"lag24h":2.65,"lag48h":17.69,"lag72h":0.21,"lag168h":4.67,"rainBucket":"recent-rain","rainResponseBucket":"high-rain"},{"sampleId":42,"site":"Hampsthwaite","siteRank":3,"date":"05/06/2025","time":"11:38:00","timestamp":"2025-06-05T11:38:00","sampleType":"INVESTIGATIVE","eColi":530.0,"ie":220.0,"logEColi":2.724276,"logIE":2.342423,"riverLevel":5.12,"rain24h":6.37,"rain48h":6.37,"rain72h":18.03,"rain120h":21.64,"rain168h":25.77,"lag24h":1.25,"lag48h":11.66,"lag72h":0.01,"lag168h":17.69,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":40,"site":"Knaresborough Lido","siteRank":5,"date":"05/06/2025","time":"12:31:00","timestamp":"2025-06-05T12:31:00","sampleType":"COMPLIANCE","eColi":510.0,"ie":55.0,"logEColi":2.70757,"logIE":1.740363,"riverLevel":5.12,"rain24h":6.37,"rain48h":6.37,"rain72h":18.03,"rain120h":21.64,"rain168h":25.77,"lag24h":1.25,"lag48h":11.66,"lag72h":0.01,"lag168h":17.69,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":44,"site":"Pateley Bridge","siteRank":1,"date":"05/06/2025","time":"11:00:00","timestamp":"2025-06-05T11:00:00","sampleType":"INVESTIGATIVE","eColi":2300.0,"ie":270.0,"logEColi":3.361728,"logIE":2.431364,"riverLevel":5.12,"rain24h":6.37,"rain48h":6.37,"rain72h":18.03,"rain120h":21.64,"rain168h":25.77,"lag24h":1.25,"lag48h":11.66,"lag72h":0.01,"lag168h":17.69,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":41,"site":"Scotton Mill","siteRank":4,"date":"05/06/2025","time":"12:11:00","timestamp":"2025-06-05T12:11:00","sampleType":"INVESTIGATIVE","eColi":5200.0,"ie":670.0,"logEColi":3.716003,"logIE":2.826075,"riverLevel":5.12,"rain24h":6.37,"rain48h":6.37,"rain72h":18.03,"rain120h":21.64,"rain168h":25.77,"lag24h":1.25,"lag48h":11.66,"lag72h":0.01,"lag168h":17.69,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":43,"site":"Summerbridge","siteRank":2,"date":"05/06/2025","time":"11:18:00","timestamp":"2025-06-05T11:18:00","sampleType":"INVESTIGATIVE","eColi":670.0,"ie":230.0,"logEColi":2.826075,"logIE":2.361728,"riverLevel":5.12,"rain24h":6.37,"rain48h":6.37,"rain72h":18.03,"rain120h":21.64,"rain168h":25.77,"lag24h":1.25,"lag48h":11.66,"lag72h":0.01,"lag168h":17.69,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":47,"site":"Hampsthwaite","siteRank":3,"date":"09/06/2025","time":"12:16:00","timestamp":"2025-06-09T12:16:00","sampleType":"INVESTIGATIVE","eColi":1300.0,"ie":230.0,"logEColi":3.113943,"logIE":2.361728,"riverLevel":7.69,"rain24h":7.99,"rain48h":7.99,"rain72h":10.72,"rain120h":22.02,"rain168h":34.93,"lag24h":0.3,"lag48h":2.73,"lag72h":6.18,"lag168h":0.01,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":45,"site":"Knaresborough Lido","siteRank":5,"date":"09/06/2025","time":"14:27:00","timestamp":"2025-06-09T14:27:00","sampleType":"COMPLIANCE","eColi":380.0,"ie":45.0,"logEColi":2.579784,"logIE":1.653213,"riverLevel":7.69,"rain24h":7.99,"rain48h":7.99,"rain72h":10.72,"rain120h":22.02,"rain168h":34.93,"lag24h":0.3,"lag48h":2.73,"lag72h":6.18,"lag168h":0.01,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":49,"site":"Pateley Bridge","siteRank":1,"date":"09/06/2025","time":"12:50:00","timestamp":"2025-06-09T12:50:00","sampleType":"INVESTIGATIVE","eColi":7200.0,"ie":320.0,"logEColi":3.857332,"logIE":2.50515,"riverLevel":7.69,"rain24h":7.99,"rain48h":7.99,"rain72h":10.72,"rain120h":22.02,"rain168h":34.93,"lag24h":0.3,"lag48h":2.73,"lag72h":6.18,"lag168h":0.01,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":46,"site":"Scotton Mill","siteRank":4,"date":"09/06/2025","time":"13:50:00","timestamp":"2025-06-09T13:50:00","sampleType":"INVESTIGATIVE","eColi":7700.0,"ie":800.0,"logEColi":3.886491,"logIE":2.90309,"riverLevel":7.69,"rain24h":7.99,"rain48h":7.99,"rain72h":10.72,"rain120h":22.02,"rain168h":34.93,"lag24h":0.3,"lag48h":2.73,"lag72h":6.18,"lag168h":0.01,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":48,"site":"Summerbridge","siteRank":2,"date":"09/06/2025","time":"13:21:00","timestamp":"2025-06-09T13:21:00","sampleType":"INVESTIGATIVE","eColi":4300.0,"ie":260.0,"logEColi":3.633468,"logIE":2.414973,"riverLevel":7.69,"rain24h":7.99,"rain48h":7.99,"rain72h":10.72,"rain120h":22.02,"rain168h":34.93,"lag24h":0.3,"lag48h":2.73,"lag72h":6.18,"lag168h":0.01,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":52,"site":"Hampsthwaite","siteRank":3,"date":"20/06/2025","time":"12:27:00","timestamp":"2025-06-20T12:27:00","sampleType":"INVESTIGATIVE","eColi":400.0,"ie":230.0,"logEColi":2.60206,"logIE":2.361728,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":2.04,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.1,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":50,"site":"Knaresborough Lido","siteRank":5,"date":"20/06/2025","time":"13:33:00","timestamp":"2025-06-20T13:33:00","sampleType":"COMPLIANCE","eColi":200.0,"ie":36.0,"logEColi":2.30103,"logIE":1.556303,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":2.04,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.1,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":54,"site":"Pateley Bridge","siteRank":1,"date":"20/06/2025","time":"11:33:00","timestamp":"2025-06-20T11:33:00","sampleType":"INVESTIGATIVE","eColi":3700.0,"ie":170.0,"logEColi":3.568202,"logIE":2.230449,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":2.04,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.1,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":51,"site":"Scotton Mill","siteRank":4,"date":"20/06/2025","time":"12:53:00","timestamp":"2025-06-20T12:53:00","sampleType":"INVESTIGATIVE","eColi":1600.0,"ie":370.0,"logEColi":3.20412,"logIE":2.568202,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":2.04,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.1,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":53,"site":"Summerbridge","siteRank":2,"date":"20/06/2025","time":"11:58:00","timestamp":"2025-06-20T11:58:00","sampleType":"INVESTIGATIVE","eColi":690.0,"ie":54.0,"logEColi":2.838849,"logIE":1.732394,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":2.04,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.1,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":57,"site":"Hampsthwaite","siteRank":3,"date":"23/06/2025","time":"13:09:00","timestamp":"2025-06-23T13:09:00","sampleType":"INVESTIGATIVE","eColi":7800.0,"ie":930.0,"logEColi":3.892095,"logIE":2.968483,"riverLevel":0.62,"rain24h":8.53,"rain48h":8.53,"rain72h":10.27,"rain120h":10.27,"rain168h":10.27,"lag24h":7.91,"lag48h":1.74,"lag72h":0.0,"lag168h":0.0,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":55,"site":"Knaresborough Lido","siteRank":5,"date":"23/06/2025","time":"14:05:00","timestamp":"2025-06-23T14:05:00","sampleType":"COMPLIANCE","eColi":780.0,"ie":220.0,"logEColi":2.892095,"logIE":2.342423,"riverLevel":0.62,"rain24h":8.53,"rain48h":8.53,"rain72h":10.27,"rain120h":10.27,"rain168h":10.27,"lag24h":7.91,"lag48h":1.74,"lag72h":0.0,"lag168h":0.0,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":59,"site":"Pateley Bridge","siteRank":1,"date":"23/06/2025","time":"12:31:00","timestamp":"2025-06-23T12:31:00","sampleType":"INVESTIGATIVE","eColi":3800.0,"ie":200.0,"logEColi":3.579784,"logIE":2.30103,"riverLevel":0.62,"rain24h":8.53,"rain48h":8.53,"rain72h":10.27,"rain120h":10.27,"rain168h":10.27,"lag24h":7.91,"lag48h":1.74,"lag72h":0.0,"lag168h":0.0,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":56,"site":"Scotton Mill","siteRank":4,"date":"23/06/2025","time":"13:35:00","timestamp":"2025-06-23T13:35:00","sampleType":"INVESTIGATIVE","eColi":8500.0,"ie":1100.0,"logEColi":3.929419,"logIE":3.041393,"riverLevel":0.62,"rain24h":8.53,"rain48h":8.53,"rain72h":10.27,"rain120h":10.27,"rain168h":10.27,"lag24h":7.91,"lag48h":1.74,"lag72h":0.0,"lag168h":0.0,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":58,"site":"Summerbridge","siteRank":2,"date":"23/06/2025","time":"12:46:00","timestamp":"2025-06-23T12:46:00","sampleType":"INVESTIGATIVE","eColi":3800.0,"ie":310.0,"logEColi":3.579784,"logIE":2.491362,"riverLevel":0.62,"rain24h":8.53,"rain48h":8.53,"rain72h":10.27,"rain120h":10.27,"rain168h":10.27,"lag24h":7.91,"lag48h":1.74,"lag72h":0.0,"lag168h":0.0,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":62,"site":"Hampsthwaite","siteRank":3,"date":"02/07/2025","time":"12:09:00","timestamp":"2025-07-02T12:09:00","sampleType":"INVESTIGATIVE","eColi":1300.0,"ie":710.0,"logEColi":3.113943,"logIE":2.851258,"riverLevel":3.14,"rain24h":3.62,"rain48h":3.62,"rain72h":3.62,"rain120h":4.77,"rain168h":6.76,"lag24h":0.48,"lag48h":0.0,"lag72h":0.04,"lag168h":0.15,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":60,"site":"Knaresborough Lido","siteRank":5,"date":"02/07/2025","time":"13:00:00","timestamp":"2025-07-02T13:00:00","sampleType":"COMPLIANCE","eColi":210.0,"ie":64.0,"logEColi":2.322219,"logIE":1.80618,"riverLevel":3.14,"rain24h":3.62,"rain48h":3.62,"rain72h":3.62,"rain120h":4.77,"rain168h":6.76,"lag24h":0.48,"lag48h":0.0,"lag72h":0.04,"lag168h":0.15,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":64,"site":"Pateley Bridge","siteRank":1,"date":"02/07/2025","time":"11:33:00","timestamp":"2025-07-02T11:33:00","sampleType":"INVESTIGATIVE","eColi":2700.0,"ie":970.0,"logEColi":3.431364,"logIE":2.986772,"riverLevel":3.14,"rain24h":3.62,"rain48h":3.62,"rain72h":3.62,"rain120h":4.77,"rain168h":6.76,"lag24h":0.48,"lag48h":0.0,"lag72h":0.04,"lag168h":0.15,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":61,"site":"Scotton Mill","siteRank":4,"date":"02/07/2025","time":"12:33:00","timestamp":"2025-07-02T12:33:00","sampleType":"INVESTIGATIVE","eColi":2700.0,"ie":580.0,"logEColi":3.431364,"logIE":2.763428,"riverLevel":3.14,"rain24h":3.62,"rain48h":3.62,"rain72h":3.62,"rain120h":4.77,"rain168h":6.76,"lag24h":0.48,"lag48h":0.0,"lag72h":0.04,"lag168h":0.15,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":63,"site":"Summerbridge","siteRank":2,"date":"02/07/2025","time":"11:49:00","timestamp":"2025-07-02T11:49:00","sampleType":"INVESTIGATIVE","eColi":3200.0,"ie":360.0,"logEColi":3.50515,"logIE":2.556303,"riverLevel":3.14,"rain24h":3.62,"rain48h":3.62,"rain72h":3.62,"rain120h":4.77,"rain168h":6.76,"lag24h":0.48,"lag48h":0.0,"lag72h":0.04,"lag168h":0.15,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":67,"site":"Hampsthwaite","siteRank":3,"date":"12/07/2025","time":"13:58:00","timestamp":"2025-07-12T13:58:00","sampleType":"INVESTIGATIVE","eColi":780.0,"ie":140.0,"logEColi":2.892095,"logIE":2.146128,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.4,"rain168h":9.51,"lag24h":0.0,"lag48h":0.0,"lag72h":0.4,"lag168h":2.86,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":65,"site":"Knaresborough Lido","siteRank":5,"date":"12/07/2025","time":"14:51:00","timestamp":"2025-07-12T14:51:00","sampleType":"COMPLIANCE","eColi":300.0,"ie":55.0,"logEColi":2.477121,"logIE":1.740363,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.4,"rain168h":9.51,"lag24h":0.0,"lag48h":0.0,"lag72h":0.4,"lag168h":2.86,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":69,"site":"Pateley Bridge","siteRank":1,"date":"12/07/2025","time":"13:21:00","timestamp":"2025-07-12T13:21:00","sampleType":"INVESTIGATIVE","eColi":4700.0,"ie":290.0,"logEColi":3.672098,"logIE":2.462398,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.4,"rain168h":9.51,"lag24h":0.0,"lag48h":0.0,"lag72h":0.4,"lag168h":2.86,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":66,"site":"Scotton Mill","siteRank":4,"date":"12/07/2025","time":"14:21:00","timestamp":"2025-07-12T14:21:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":2400.0,"logEColi":4.0,"logIE":3.380211,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.4,"rain168h":9.51,"lag24h":0.0,"lag48h":0.0,"lag72h":0.4,"lag168h":2.86,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":68,"site":"Summerbridge","siteRank":2,"date":"12/07/2025","time":"13:37:00","timestamp":"2025-07-12T13:37:00","sampleType":"INVESTIGATIVE","eColi":730.0,"ie":220.0,"logEColi":2.863323,"logIE":2.342423,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.4,"rain168h":9.51,"lag24h":0.0,"lag48h":0.0,"lag72h":0.4,"lag168h":2.86,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":72,"site":"Hampsthwaite","siteRank":3,"date":"16/07/2025","time":"11:54:00","timestamp":"2025-07-16T11:54:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":5300.0,"logEColi":4.0,"logIE":3.724276,"riverLevel":0.1,"rain24h":19.75,"rain48h":19.75,"rain72h":21.22,"rain120h":21.31,"rain168h":21.31,"lag24h":19.65,"lag48h":1.47,"lag72h":0.09,"lag168h":0.4,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":70,"site":"Knaresborough Lido","siteRank":5,"date":"16/07/2025","time":"12:34:00","timestamp":"2025-07-16T12:34:00","sampleType":"COMPLIANCE","eColi":1400.0,"ie":530.0,"logEColi":3.146128,"logIE":2.724276,"riverLevel":0.1,"rain24h":19.75,"rain48h":19.75,"rain72h":21.22,"rain120h":21.31,"rain168h":21.31,"lag24h":19.65,"lag48h":1.47,"lag72h":0.09,"lag168h":0.4,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":74,"site":"Pateley Bridge","siteRank":1,"date":"16/07/2025","time":"11:15:00","timestamp":"2025-07-16T11:15:00","sampleType":"INVESTIGATIVE","eColi":5300.0,"ie":970.0,"logEColi":3.724276,"logIE":2.986772,"riverLevel":0.1,"rain24h":19.75,"rain48h":19.75,"rain72h":21.22,"rain120h":21.31,"rain168h":21.31,"lag24h":19.65,"lag48h":1.47,"lag72h":0.09,"lag168h":0.4,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":71,"site":"Scotton Mill","siteRank":4,"date":"16/07/2025","time":"12:11:00","timestamp":"2025-07-16T12:11:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":4800.0,"logEColi":4.0,"logIE":3.681241,"riverLevel":0.1,"rain24h":19.75,"rain48h":19.75,"rain72h":21.22,"rain120h":21.31,"rain168h":21.31,"lag24h":19.65,"lag48h":1.47,"lag72h":0.09,"lag168h":0.4,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":73,"site":"Summerbridge","siteRank":2,"date":"16/07/2025","time":"11:34:00","timestamp":"2025-07-16T11:34:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":6400.0,"logEColi":4.0,"logIE":3.80618,"riverLevel":0.1,"rain24h":19.75,"rain48h":19.75,"rain72h":21.22,"rain120h":21.31,"rain168h":21.31,"lag24h":19.65,"lag48h":1.47,"lag72h":0.09,"lag168h":0.4,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":77,"site":"Hampsthwaite","siteRank":3,"date":"21/07/2025","time":"12:40:00","timestamp":"2025-07-21T12:40:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":10000.0,"logEColi":4.0,"logIE":4.0,"riverLevel":8.37,"rain24h":30.89,"rain48h":30.89,"rain72h":44.16,"rain120h":45.0,"rain168h":64.75,"lag24h":22.52,"lag48h":13.27,"lag72h":0.66,"lag168h":1.47,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":75,"site":"Knaresborough Lido","siteRank":5,"date":"21/07/2025","time":"13:25:00","timestamp":"2025-07-21T13:25:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":9000.0,"logEColi":4.0,"logIE":3.954243,"riverLevel":8.37,"rain24h":30.89,"rain48h":30.89,"rain72h":44.16,"rain120h":45.0,"rain168h":64.75,"lag24h":22.52,"lag48h":13.27,"lag72h":0.66,"lag168h":1.47,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":79,"site":"Pateley Bridge","siteRank":1,"date":"21/07/2025","time":"11:43:00","timestamp":"2025-07-21T11:43:00","sampleType":"INVESTIGATIVE","eColi":5300.0,"ie":1900.0,"logEColi":3.724276,"logIE":3.278754,"riverLevel":8.37,"rain24h":30.89,"rain48h":30.89,"rain72h":44.16,"rain120h":45.0,"rain168h":64.75,"lag24h":22.52,"lag48h":13.27,"lag72h":0.66,"lag168h":1.47,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":76,"site":"Scotton Mill","siteRank":4,"date":"21/07/2025","time":"13:02:00","timestamp":"2025-07-21T13:02:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":10000.0,"logEColi":4.0,"logIE":4.0,"riverLevel":8.37,"rain24h":30.89,"rain48h":30.89,"rain72h":44.16,"rain120h":45.0,"rain168h":64.75,"lag24h":22.52,"lag48h":13.27,"lag72h":0.66,"lag168h":1.47,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":78,"site":"Summerbridge","siteRank":2,"date":"21/07/2025","time":"12:16:00","timestamp":"2025-07-21T12:16:00","sampleType":"INVESTIGATIVE","eColi":10000.0,"ie":3500.0,"logEColi":4.0,"logIE":3.544068,"riverLevel":8.37,"rain24h":30.89,"rain48h":30.89,"rain72h":44.16,"rain120h":45.0,"rain168h":64.75,"lag24h":22.52,"lag48h":13.27,"lag72h":0.66,"lag168h":1.47,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":83,"site":"Hampsthwaite","siteRank":3,"date":"31/07/2025","time":"12:28:00","timestamp":"2025-07-31T12:28:00","sampleType":"INVESTIGATIVE","eColi":1200.0,"ie":420.0,"logEColi":3.079181,"logIE":2.623249,"riverLevel":0.03,"rain24h":0.03,"rain48h":0.03,"rain72h":0.53,"rain120h":1.44,"rain168h":1.54,"lag24h":0.0,"lag48h":0.5,"lag72h":0.03,"lag168h":0.1,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":81,"site":"Knaresborough Lido","siteRank":5,"date":"31/07/2025","time":"13:18:00","timestamp":"2025-07-31T13:18:00","sampleType":"COMPLIANCE","eColi":720.0,"ie":110.0,"logEColi":2.857332,"logIE":2.041393,"riverLevel":0.03,"rain24h":0.03,"rain48h":0.03,"rain72h":0.53,"rain120h":1.44,"rain168h":1.54,"lag24h":0.0,"lag48h":0.5,"lag72h":0.03,"lag168h":0.1,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":85,"site":"Pateley Bridge","siteRank":1,"date":"31/07/2025","time":"11:28:00","timestamp":"2025-07-31T11:28:00","sampleType":"INVESTIGATIVE","eColi":670.0,"ie":130.0,"logEColi":2.826075,"logIE":2.113943,"riverLevel":0.03,"rain24h":0.03,"rain48h":0.03,"rain72h":0.53,"rain120h":1.44,"rain168h":1.54,"lag24h":0.0,"lag48h":0.5,"lag72h":0.03,"lag168h":0.1,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":82,"site":"Scotton Mill","siteRank":4,"date":"31/07/2025","time":"12:50:00","timestamp":"2025-07-31T12:50:00","sampleType":"INVESTIGATIVE","eColi":6600.0,"ie":910.0,"logEColi":3.819544,"logIE":2.959041,"riverLevel":0.03,"rain24h":0.03,"rain48h":0.03,"rain72h":0.53,"rain120h":1.44,"rain168h":1.54,"lag24h":0.0,"lag48h":0.5,"lag72h":0.03,"lag168h":0.1,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":84,"site":"Summerbridge","siteRank":2,"date":"31/07/2025","time":"12:05:00","timestamp":"2025-07-31T12:05:00","sampleType":"INVESTIGATIVE","eColi":1400.0,"ie":220.0,"logEColi":3.146128,"logIE":2.342423,"riverLevel":0.03,"rain24h":0.03,"rain48h":0.03,"rain72h":0.53,"rain120h":1.44,"rain168h":1.54,"lag24h":0.0,"lag48h":0.5,"lag72h":0.03,"lag168h":0.1,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":103,"site":"Hampsthwaite","siteRank":3,"date":"07/08/2025","time":"12:34:00","timestamp":"2025-08-07T12:34:00","sampleType":"INVESTIGATIVE","eColi":1500.0,"ie":340.0,"logEColi":3.176091,"logIE":2.531479,"riverLevel":0.51,"rain24h":0.51,"rain48h":0.51,"rain72h":2.06,"rain120h":16.41,"rain168h":17.62,"lag24h":0.0,"lag48h":1.55,"lag72h":12.9,"lag168h":0.03,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":101,"site":"Knaresborough Lido","siteRank":5,"date":"07/08/2025","time":"11:47:00","timestamp":"2025-08-07T11:47:00","sampleType":"COMPLIANCE","eColi":430.0,"ie":110.0,"logEColi":2.633468,"logIE":2.041393,"riverLevel":0.51,"rain24h":0.51,"rain48h":0.51,"rain72h":2.06,"rain120h":16.41,"rain168h":17.62,"lag24h":0.0,"lag48h":1.55,"lag72h":12.9,"lag168h":0.03,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":105,"site":"Pateley Bridge","siteRank":1,"date":"07/08/2025","time":"13:16:00","timestamp":"2025-08-07T13:16:00","sampleType":"INVESTIGATIVE","eColi":610.0,"ie":200.0,"logEColi":2.78533,"logIE":2.30103,"riverLevel":0.51,"rain24h":0.51,"rain48h":0.51,"rain72h":2.06,"rain120h":16.41,"rain168h":17.62,"lag24h":0.0,"lag48h":1.55,"lag72h":12.9,"lag168h":0.03,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":102,"site":"Scotton Mill","siteRank":4,"date":"07/08/2025","time":"12:14:00","timestamp":"2025-08-07T12:14:00","sampleType":"INVESTIGATIVE","eColi":5600.0,"ie":640.0,"logEColi":3.748188,"logIE":2.80618,"riverLevel":0.51,"rain24h":0.51,"rain48h":0.51,"rain72h":2.06,"rain120h":16.41,"rain168h":17.62,"lag24h":0.0,"lag48h":1.55,"lag72h":12.9,"lag168h":0.03,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":104,"site":"Summerbridge","siteRank":2,"date":"07/08/2025","time":"12:56:00","timestamp":"2025-08-07T12:56:00","sampleType":"INVESTIGATIVE","eColi":1600.0,"ie":160.0,"logEColi":3.20412,"logIE":2.20412,"riverLevel":0.51,"rain24h":0.51,"rain48h":0.51,"rain72h":2.06,"rain120h":16.41,"rain168h":17.62,"lag24h":0.0,"lag48h":1.55,"lag72h":12.9,"lag168h":0.03,"rainBucket":"trace","rainResponseBucket":"some-rain"},{"sampleId":108,"site":"Hampsthwaite","siteRank":3,"date":"14/08/2025","time":"14:11:00","timestamp":"2025-08-14T14:11:00","sampleType":"INVESTIGATIVE","eColi":2100.0,"ie":250.0,"logEColi":3.322219,"logIE":2.39794,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.09,"rain120h":0.23,"rain168h":0.55,"lag24h":0.0,"lag48h":0.09,"lag72h":0.14,"lag168h":0.51,"rainBucket":"dry","rainResponseBucket":"some-rain"},{"sampleId":106,"site":"Knaresborough Lido","siteRank":5,"date":"14/08/2025","time":"15:10:00","timestamp":"2025-08-14T15:10:00","sampleType":"COMPLIANCE","eColi":110.0,"ie":27.0,"logEColi":2.041393,"logIE":1.431364,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.09,"rain120h":0.23,"rain168h":0.55,"lag24h":0.0,"lag48h":0.09,"lag72h":0.14,"lag168h":0.51,"rainBucket":"dry","rainResponseBucket":"some-rain"},{"sampleId":110,"site":"Pateley Bridge","siteRank":1,"date":"14/08/2025","time":"13:18:00","timestamp":"2025-08-14T13:18:00","sampleType":"INVESTIGATIVE","eColi":640.0,"ie":250.0,"logEColi":2.80618,"logIE":2.39794,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.09,"rain120h":0.23,"rain168h":0.55,"lag24h":0.0,"lag48h":0.09,"lag72h":0.14,"lag168h":0.51,"rainBucket":"dry","rainResponseBucket":"some-rain"},{"sampleId":107,"site":"Scotton Mill","siteRank":4,"date":"14/08/2025","time":"14:36:00","timestamp":"2025-08-14T14:36:00","sampleType":"INVESTIGATIVE","eColi":4000.0,"ie":500.0,"logEColi":3.60206,"logIE":2.69897,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.09,"rain120h":0.23,"rain168h":0.55,"lag24h":0.0,"lag48h":0.09,"lag72h":0.14,"lag168h":0.51,"rainBucket":"dry","rainResponseBucket":"some-rain"},{"sampleId":109,"site":"Summerbridge","siteRank":2,"date":"14/08/2025","time":"13:47:00","timestamp":"2025-08-14T13:47:00","sampleType":"INVESTIGATIVE","eColi":2700.0,"ie":690.0,"logEColi":3.431364,"logIE":2.838849,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.09,"rain120h":0.23,"rain168h":0.55,"lag24h":0.0,"lag48h":0.09,"lag72h":0.14,"lag168h":0.51,"rainBucket":"dry","rainResponseBucket":"some-rain"},{"sampleId":113,"site":"Hampsthwaite","siteRank":3,"date":"18/08/2025","time":"10:40:00","timestamp":"2025-08-18T10:40:00","sampleType":"INVESTIGATIVE","eColi":1700.0,"ie":400.0,"logEColi":3.230449,"logIE":2.60206,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.09,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.14,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":111,"site":"Knaresborough Lido","siteRank":5,"date":"18/08/2025","time":"11:20:00","timestamp":"2025-08-18T11:20:00","sampleType":"COMPLIANCE","eColi":110.0,"ie":10.0,"logEColi":2.041393,"logIE":1.0,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.09,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.14,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":115,"site":"Pateley Bridge","siteRank":1,"date":"18/08/2025","time":"10:02:00","timestamp":"2025-08-18T10:02:00","sampleType":"INVESTIGATIVE","eColi":4800.0,"ie":230.0,"logEColi":3.681241,"logIE":2.361728,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.09,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.14,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":112,"site":"Scotton Mill","siteRank":4,"date":"18/08/2025","time":"11:00:00","timestamp":"2025-08-18T11:00:00","sampleType":"INVESTIGATIVE","eColi":4500.0,"ie":680.0,"logEColi":3.653213,"logIE":2.832509,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.09,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.14,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":114,"site":"Summerbridge","siteRank":2,"date":"18/08/2025","time":"10:19:00","timestamp":"2025-08-18T10:19:00","sampleType":"INVESTIGATIVE","eColi":2800.0,"ie":420.0,"logEColi":3.447158,"logIE":2.623249,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":0.0,"rain120h":0.0,"rain168h":0.09,"lag24h":0.0,"lag48h":0.0,"lag72h":0.0,"lag168h":0.14,"rainBucket":"dry","rainResponseBucket":"dry"},{"sampleId":133,"site":"Hampsthwaite","siteRank":3,"date":"27/08/2025","time":"13:09:00","timestamp":"2025-08-27T13:09:00","sampleType":"INVESTIGATIVE","eColi":1200.0,"ie":350.0,"logEColi":3.079181,"logIE":2.544068,"riverLevel":5.35,"rain24h":6.53,"rain48h":6.53,"rain72h":6.53,"rain120h":6.59,"rain168h":6.81,"lag24h":1.18,"lag48h":0.0,"lag72h":0.0,"lag168h":0.34,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":131,"site":"Knaresborough Lido","siteRank":5,"date":"27/08/2025","time":"14:03:00","timestamp":"2025-08-27T14:03:00","sampleType":"COMPLIANCE","eColi":200.0,"ie":73.0,"logEColi":2.30103,"logIE":1.863323,"riverLevel":5.35,"rain24h":6.53,"rain48h":6.53,"rain72h":6.53,"rain120h":6.59,"rain168h":6.81,"lag24h":1.18,"lag48h":0.0,"lag72h":0.0,"lag168h":0.34,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":135,"site":"Pateley Bridge","siteRank":1,"date":"27/08/2025","time":"12:15:00","timestamp":"2025-08-27T12:15:00","sampleType":"INVESTIGATIVE","eColi":500.0,"ie":390.0,"logEColi":2.69897,"logIE":2.591065,"riverLevel":5.35,"rain24h":6.53,"rain48h":6.53,"rain72h":6.53,"rain120h":6.59,"rain168h":6.81,"lag24h":1.18,"lag48h":0.0,"lag72h":0.0,"lag168h":0.34,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":132,"site":"Scotton Mill","siteRank":4,"date":"27/08/2025","time":"13:36:00","timestamp":"2025-08-27T13:36:00","sampleType":"INVESTIGATIVE","eColi":4700.0,"ie":760.0,"logEColi":3.672098,"logIE":2.880814,"riverLevel":5.35,"rain24h":6.53,"rain48h":6.53,"rain72h":6.53,"rain120h":6.59,"rain168h":6.81,"lag24h":1.18,"lag48h":0.0,"lag72h":0.0,"lag168h":0.34,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":134,"site":"Summerbridge","siteRank":2,"date":"27/08/2025","time":"12:39:00","timestamp":"2025-08-27T12:39:00","sampleType":"INVESTIGATIVE","eColi":3200.0,"ie":280.0,"logEColi":3.50515,"logIE":2.447158,"riverLevel":5.35,"rain24h":6.53,"rain48h":6.53,"rain72h":6.53,"rain120h":6.59,"rain168h":6.81,"lag24h":1.18,"lag48h":0.0,"lag72h":0.0,"lag168h":0.34,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":138,"site":"Hampsthwaite","siteRank":3,"date":"02/09/2025","time":"12:12:00","timestamp":"2025-09-02T12:12:00","sampleType":"INVESTIGATIVE","eColi":1200.0,"ie":220.0,"logEColi":3.079181,"logIE":2.342423,"riverLevel":0.2,"rain24h":2.71,"rain48h":2.71,"rain72h":4.43,"rain120h":11.57,"rain168h":20.54,"lag24h":2.51,"lag48h":1.72,"lag72h":6.38,"lag168h":1.18,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":136,"site":"Knaresborough Lido","siteRank":5,"date":"02/09/2025","time":"13:05:00","timestamp":"2025-09-02T13:05:00","sampleType":"COMPLIANCE","eColi":420.0,"ie":27.0,"logEColi":2.623249,"logIE":1.431364,"riverLevel":0.2,"rain24h":2.71,"rain48h":2.71,"rain72h":4.43,"rain120h":11.57,"rain168h":20.54,"lag24h":2.51,"lag48h":1.72,"lag72h":6.38,"lag168h":1.18,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":140,"site":"Pateley Bridge","siteRank":1,"date":"02/09/2025","time":"11:30:00","timestamp":"2025-09-02T11:30:00","sampleType":"INVESTIGATIVE","eColi":750.0,"ie":300.0,"logEColi":2.875061,"logIE":2.477121,"riverLevel":0.2,"rain24h":2.71,"rain48h":2.71,"rain72h":4.43,"rain120h":11.57,"rain168h":20.54,"lag24h":2.51,"lag48h":1.72,"lag72h":6.38,"lag168h":1.18,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":137,"site":"Scotton Mill","siteRank":4,"date":"02/09/2025","time":"12:29:00","timestamp":"2025-09-02T12:29:00","sampleType":"INVESTIGATIVE","eColi":6900.0,"ie":1100.0,"logEColi":3.838849,"logIE":3.041393,"riverLevel":0.2,"rain24h":2.71,"rain48h":2.71,"rain72h":4.43,"rain120h":11.57,"rain168h":20.54,"lag24h":2.51,"lag48h":1.72,"lag72h":6.38,"lag168h":1.18,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":139,"site":"Summerbridge","siteRank":2,"date":"02/09/2025","time":"11:52:00","timestamp":"2025-09-02T11:52:00","sampleType":"INVESTIGATIVE","eColi":1300.0,"ie":200.0,"logEColi":3.113943,"logIE":2.30103,"riverLevel":0.2,"rain24h":2.71,"rain48h":2.71,"rain72h":4.43,"rain120h":11.57,"rain168h":20.54,"lag24h":2.51,"lag48h":1.72,"lag72h":6.38,"lag168h":1.18,"rainBucket":"recent-rain","rainResponseBucket":"some-rain"},{"sampleId":189,"site":"Hampsthwaite","siteRank":3,"date":"11/09/2025","time":"11:54:00","timestamp":"2025-09-11T11:54:00","sampleType":"INVESTIGATIVE","eColi":5100.0,"ie":870.0,"logEColi":3.70757,"logIE":2.939519,"riverLevel":8.41,"rain24h":16.42,"rain48h":16.42,"rain72h":16.42,"rain120h":20.67,"rain168h":20.84,"lag24h":8.01,"lag48h":0.0,"lag72h":0.87,"lag168h":6.42,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":null,"site":"Knaresborough Lido","siteRank":5,"date":"11/09/2025","time":"","timestamp":"2025-09-11T00:00:00","sampleType":"COMPLIANCE","eColi":5290.0,"ie":160.0,"logEColi":3.381714,"logIE":2.20412,"riverLevel":8.41,"rain24h":16.42,"rain48h":16.42,"rain72h":16.42,"rain120h":20.67,"rain168h":20.84,"lag24h":8.01,"lag48h":0.0,"lag72h":0.87,"lag168h":6.42,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":191,"site":"Pateley Bridge","siteRank":1,"date":"11/09/2025","time":"11:15:00","timestamp":"2025-09-11T11:15:00","sampleType":"INVESTIGATIVE","eColi":3100.0,"ie":470.0,"logEColi":3.491362,"logIE":2.672098,"riverLevel":8.41,"rain24h":16.42,"rain48h":16.42,"rain72h":16.42,"rain120h":20.67,"rain168h":20.84,"lag24h":8.01,"lag48h":0.0,"lag72h":0.87,"lag168h":6.42,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":188,"site":"Scotton Mill","siteRank":4,"date":"11/09/2025","time":"12:25:00","timestamp":"2025-09-11T12:25:00","sampleType":"INVESTIGATIVE","eColi":6800.0,"ie":2800.0,"logEColi":3.832509,"logIE":3.447158,"riverLevel":8.41,"rain24h":16.42,"rain48h":16.42,"rain72h":16.42,"rain120h":20.67,"rain168h":20.84,"lag24h":8.01,"lag48h":0.0,"lag72h":0.87,"lag168h":6.42,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":190,"site":"Summerbridge","siteRank":2,"date":"11/09/2025","time":"11:32:00","timestamp":"2025-09-11T11:32:00","sampleType":"INVESTIGATIVE","eColi":8000.0,"ie":1500.0,"logEColi":3.90309,"logIE":3.176091,"riverLevel":8.41,"rain24h":16.42,"rain48h":16.42,"rain72h":16.42,"rain120h":20.67,"rain168h":20.84,"lag24h":8.01,"lag48h":0.0,"lag72h":0.87,"lag168h":6.42,"rainBucket":"heavy-rain","rainResponseBucket":"high-rain"},{"sampleId":209,"site":"Hampsthwaite","siteRank":3,"date":"23/09/2025","time":"12:29:00","timestamp":"2025-09-23T12:29:00","sampleType":"INVESTIGATIVE","eColi":3100.0,"ie":700.0,"logEColi":3.491362,"logIE":2.845098,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":6.86,"rain120h":77.56,"rain168h":88.19,"lag24h":0.0,"lag48h":6.86,"lag72h":69.94,"lag168h":4.4,"rainBucket":"dry","rainResponseBucket":"high-rain"},{"sampleId":207,"site":"Knaresborough Lido","siteRank":5,"date":"23/09/2025","time":"13:25:00","timestamp":"2025-09-23T13:25:00","sampleType":"COMPLIANCE","eColi":5900.0,"ie":790.0,"logEColi":3.770852,"logIE":2.897627,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":6.86,"rain120h":77.56,"rain168h":88.19,"lag24h":0.0,"lag48h":6.86,"lag72h":69.94,"lag168h":4.4,"rainBucket":"dry","rainResponseBucket":"high-rain"},{"sampleId":211,"site":"Pateley Bridge","siteRank":1,"date":"23/09/2025","time":"11:51:00","timestamp":"2025-09-23T11:51:00","sampleType":"INVESTIGATIVE","eColi":5400.0,"ie":2000.0,"logEColi":3.732394,"logIE":3.30103,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":6.86,"rain120h":77.56,"rain168h":88.19,"lag24h":0.0,"lag48h":6.86,"lag72h":69.94,"lag168h":4.4,"rainBucket":"dry","rainResponseBucket":"high-rain"},{"sampleId":208,"site":"Scotton Mill","siteRank":4,"date":"23/09/2025","time":"12:58:00","timestamp":"2025-09-23T12:58:00","sampleType":"INVESTIGATIVE","eColi":6100.0,"ie":1600.0,"logEColi":3.78533,"logIE":3.20412,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":6.86,"rain120h":77.56,"rain168h":88.19,"lag24h":0.0,"lag48h":6.86,"lag72h":69.94,"lag168h":4.4,"rainBucket":"dry","rainResponseBucket":"high-rain"},{"sampleId":210,"site":"Summerbridge","siteRank":2,"date":"23/09/2025","time":"12:09:00","timestamp":"2025-09-23T12:09:00","sampleType":"INVESTIGATIVE","eColi":6300.0,"ie":790.0,"logEColi":3.799341,"logIE":2.897627,"riverLevel":0.0,"rain24h":0.0,"rain48h":0.0,"rain72h":6.86,"rain120h":77.56,"rain168h":88.19,"lag24h":0.0,"lag48h":6.86,"lag72h":69.94,"lag168h":4.4,"rainBucket":"dry","rainResponseBucket":"high-rain"}],"bucketSummaries":[{"bucket":"dry","label":"No rain in previous 24h","sampleCount":30,"meanEColi":2701.0,"medianEColi":1900.0,"meanIE":477.06666666666666,"medianIE":250.0,"meanRain24h":0.0,"meanRain48h":0.0,"meanRain72h":1.1583333333333334,"meanRain120h":13.031666666666666,"meanRain168h":16.73},{"bucket":"trace","label":"0-1 mm in previous 24h","sampleCount":15,"meanEColi":1813.3333333333333,"medianEColi":1200.0,"meanIE":277.8666666666667,"medianIE":160.0,"meanRain24h":0.25,"meanRain48h":0.25,"meanRain72h":1.4999999999999996,"meanRain120h":6.606666666666666,"meanRain168h":7.043333333333335},{"bucket":"recent-rain","label":"1-5 mm in previous 24h","sampleCount":15,"meanEColi":2046.0,"medianEColi":1300.0,"meanIE":414.06666666666666,"medianIE":240.0,"meanRain24h":3.486666666666667,"meanRain48h":3.486666666666667,"meanRain72h":9.95666666666667,"meanRain120h":14.030000000000001,"meanRain168h":24.37333333333334},{"bucket":"heavy-rain","label":"More than 5 mm in previous 24h","sampleCount":35,"meanEColi":4996.0,"medianEColi":5100.0,"meanIE":1883.2285714285715,"medianIE":530.0,"meanRain24h":13.782857142857141,"meanRain48h":13.782857142857141,"meanRain72h":18.19285714285713,"meanRain120h":21.071428571428573,"meanRain168h":26.382857142857137}],"mstSamples":[{"site":"Knaresborough Lido","siteRank":5,"date":"06/05/2025","time":"13:28","timestamp":"2025-05-06T13:28:00","eColi":2000.0,"ie":160.0,"hubac":5.1,"rubac":3.3,"hubacRaw":"5.1","rubacRaw":"3.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"31/05/2025","time":"15:30","timestamp":"2025-05-31T15:30:00","eColi":900.0,"ie":210.0,"hubac":4.8,"rubac":4.7,"hubacRaw":"4.8","rubacRaw":"4.7"},{"site":"Knaresborough Lido","siteRank":5,"date":"23/06/2025","time":"14:05","timestamp":"2025-06-23T14:05:00","eColi":780.0,"ie":220.0,"hubac":4.2,"rubac":null,"hubacRaw":"4.2","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/07/2025","time":"12:34","timestamp":"2025-07-16T12:34:00","eColi":1400.0,"ie":530.0,"hubac":4.6,"rubac":3.5,"hubacRaw":"4.6","rubacRaw":"3.5"},{"site":"Knaresborough Lido","siteRank":5,"date":"25/07/2025","time":"11:26","timestamp":"2025-07-25T11:26:00","eColi":2400.0,"ie":420.0,"hubac":5.1,"rubac":null,"hubacRaw":"5.1","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"31/07/2025","time":"13:18","timestamp":"2025-07-31T13:18:00","eColi":720.0,"ie":110.0,"hubac":4.2,"rubac":null,"hubacRaw":"4.2","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"23/09/2025","time":"13:25","timestamp":"2025-09-23T13:25:00","eColi":5900.0,"ie":790.0,"hubac":5.3,"rubac":5.8,"hubacRaw":"5.3","rubacRaw":"5.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"10:00","timestamp":"2025-08-06T10:00:00","eColi":1100.0,"ie":170.0,"hubac":4.5,"rubac":2.0,"hubacRaw":"4.5","rubacRaw":"<2"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"11:00","timestamp":"2025-08-06T11:00:00","eColi":1100.0,"ie":86.0,"hubac":4.7,"rubac":3.3,"hubacRaw":"4.7","rubacRaw":"3.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"11:30","timestamp":"2025-08-06T11:30:00","eColi":1200.0,"ie":63.0,"hubac":4.8,"rubac":3.0,"hubacRaw":"4.8","rubacRaw":"3"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"14:30","timestamp":"2025-08-06T14:30:00","eColi":910.0,"ie":72.0,"hubac":4.6,"rubac":null,"hubacRaw":"4.6","rubacRaw":"N/F"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"09:31","timestamp":"2025-08-06T09:31:00","eColi":1800.0,"ie":280.0,"hubac":3.9,"rubac":4.8,"hubacRaw":"3.9","rubacRaw":"4.8"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"10:30","timestamp":"2025-08-06T10:30:00","eColi":1600.0,"ie":390.0,"hubac":3.5,"rubac":4.8,"hubacRaw":"3.5","rubacRaw":"4.8"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"13:00","timestamp":"2025-08-06T13:00:00","eColi":890.0,"ie":340.0,"hubac":3.6,"rubac":3.9,"hubacRaw":"3.6","rubacRaw":"3.9"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"14:00","timestamp":"2025-08-06T14:00:00","eColi":900.0,"ie":420.0,"hubac":3.3,"rubac":3.9,"hubacRaw":"3.3","rubacRaw":"3.9"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"14:30","timestamp":"2025-08-06T14:30:00","eColi":2100.0,"ie":380.0,"hubac":3.7,"rubac":5.4,"hubacRaw":"3.7","rubacRaw":"5.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"20/08/2025","time":"13:08","timestamp":"2025-08-20T13:08:00","eColi":180.0,"ie":27.0,"hubac":3.7,"rubac":null,"hubacRaw":"3.7","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"20/08/2025","time":"15:08","timestamp":"2025-08-20T15:08:00","eColi":270.0,"ie":10.0,"hubac":3.8,"rubac":null,"hubacRaw":"3.8","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"20/08/2025","time":"15:38","timestamp":"2025-08-20T15:38:00","eColi":200.0,"ie":36.0,"hubac":3.9,"rubac":null,"hubacRaw":"3.9","rubacRaw":"N/F"},{"site":"Hampsthwaite","siteRank":3,"date":"20/08/2025","time":"11:30","timestamp":"2025-08-20T11:30:00","eColi":2200.0,"ie":480.0,"hubac":4.7,"rubac":4.3,"hubacRaw":"4.7","rubacRaw":"4.3"},{"site":"Hampsthwaite","siteRank":3,"date":"20/08/2025","time":"13:00","timestamp":"2025-08-20T13:00:00","eColi":2500.0,"ie":380.0,"hubac":4.4,"rubac":3.8,"hubacRaw":"4.4","rubacRaw":"3.8"},{"site":"Hampsthwaite","siteRank":3,"date":"20/08/2025","time":"14:30","timestamp":"2025-08-20T14:30:00","eColi":2200.0,"ie":520.0,"hubac":4.6,"rubac":4.5,"hubacRaw":"4.6","rubacRaw":"4.5"},{"site":"Knaresborough Lido","siteRank":5,"date":"03/09/2025","time":"15:00","timestamp":"2025-09-03T15:00:00","eColi":500.0,"ie":280.0,"hubac":4.2,"rubac":null,"hubacRaw":"4.2","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"03/09/2025","time":"15:30","timestamp":"2025-09-03T15:30:00","eColi":540.0,"ie":170.0,"hubac":4.3,"rubac":null,"hubacRaw":"4.3","rubacRaw":"N/F"},{"site":"Hampsthwaite","siteRank":3,"date":"03/09/2025","time":"12:05","timestamp":"2025-09-03T12:05:00","eColi":1000.0,"ie":350.0,"hubac":4.0,"rubac":4.4,"hubacRaw":"4.0","rubacRaw":"4.4"},{"site":"Hampsthwaite","siteRank":3,"date":"03/09/2025","time":"12:30","timestamp":"2025-09-03T12:30:00","eColi":1000.0,"ie":540.0,"hubac":4.0,"rubac":4.3,"hubacRaw":"4.0","rubacRaw":"4.3"},{"site":"Hampsthwaite","siteRank":3,"date":"03/09/2025","time":"12:55","timestamp":"2025-09-03T12:55:00","eColi":1200.0,"ie":570.0,"hubac":4.0,"rubac":4.1,"hubacRaw":"4.0","rubacRaw":"4.1"},{"site":"Knaresborough Lido","siteRank":5,"date":"09/09/2025","time":"15:00","timestamp":"2025-09-09T15:00:00","eColi":490.0,"ie":72.0,"hubac":4.5,"rubac":null,"hubacRaw":"4.5","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"09/09/2025","time":"15:30","timestamp":"2025-09-09T15:30:00","eColi":640.0,"ie":63.0,"hubac":4.6,"rubac":null,"hubacRaw":"4.6","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"09/09/2025","time":"16:00","timestamp":"2025-09-09T16:00:00","eColi":540.0,"ie":63.0,"hubac":4.6,"rubac":2.0,"hubacRaw":"4.6","rubacRaw":"<2"},{"site":"Hampsthwaite","siteRank":3,"date":"09/09/2025","time":"12:31","timestamp":"2025-09-09T12:31:00","eColi":13000.0,"ie":370.0,"hubac":4.5,"rubac":5.3,"hubacRaw":"4.5","rubacRaw":"5.3"},{"site":"Hampsthwaite","siteRank":3,"date":"09/09/2025","time":"13:30","timestamp":"2025-09-09T13:30:00","eColi":6800.0,"ie":310.0,"hubac":4.4,"rubac":4.8,"hubacRaw":"4.4","rubacRaw":"4.8"},{"site":"Hampsthwaite","siteRank":3,"date":"09/09/2025","time":"15:30","timestamp":"2025-09-09T15:30:00","eColi":2400.0,"ie":340.0,"hubac":4.7,"rubac":4.2,"hubacRaw":"4.7","rubacRaw":"4.2"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"14:00","timestamp":"2025-09-10T14:00:00","eColi":620.0,"ie":90.0,"hubac":4.7,"rubac":3.1,"hubacRaw":"4.7","rubacRaw":"3.1"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"14:30","timestamp":"2025-09-10T14:30:00","eColi":1200.0,"ie":230.0,"hubac":4.5,"rubac":3.4,"hubacRaw":"4.5","rubacRaw":"3.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"15:00","timestamp":"2025-09-10T15:00:00","eColi":760.0,"ie":140.0,"hubac":4.8,"rubac":2.8,"hubacRaw":"4.8","rubacRaw":"2.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"15:30","timestamp":"2025-09-10T15:30:00","eColi":780.0,"ie":150.0,"hubac":4.5,"rubac":2.0,"hubacRaw":"4.5","rubacRaw":"<2"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"10:30","timestamp":"2025-09-16T10:30:00","eColi":12000.0,"ie":5000.0,"hubac":5.9,"rubac":6.2,"hubacRaw":"5.9","rubacRaw":"6.2"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"11:00","timestamp":"2025-09-16T11:00:00","eColi":26000.0,"ie":5200.0,"hubac":5.9,"rubac":6.3,"hubacRaw":"5.9","rubacRaw":"6.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"11:30","timestamp":"2025-09-16T11:30:00","eColi":14000.0,"ie":5500.0,"hubac":5.8,"rubac":6.3,"hubacRaw":"5.8","rubacRaw":"6.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"13:00","timestamp":"2025-09-16T13:00:00","eColi":15000.0,"ie":7900.0,"hubac":5.7,"rubac":6.4,"hubacRaw":"5.7","rubacRaw":"6.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"15:00","timestamp":"2025-09-16T15:00:00","eColi":16000.0,"ie":6400.0,"hubac":5.8,"rubac":6.8,"hubacRaw":"5.8","rubacRaw":"6.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"15:30","timestamp":"2025-09-16T15:30:00","eColi":15000.0,"ie":7400.0,"hubac":5.8,"rubac":6.7,"hubacRaw":"5.8","rubacRaw":"6.7"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"09:00","timestamp":"2025-09-16T09:00:00","eColi":15000.0,"ie":9600.0,"hubac":5.0,"rubac":6.4,"hubacRaw":"5","rubacRaw":"6.4"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"10:30","timestamp":"2025-09-16T10:30:00","eColi":10000.0,"ie":8800.0,"hubac":4.7,"rubac":6.4,"hubacRaw":"4.7","rubacRaw":"6.4"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"14:30","timestamp":"2025-09-16T14:30:00","eColi":6300.0,"ie":3800.0,"hubac":4.7,"rubac":6.0,"hubacRaw":"4.7","rubacRaw":"6"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"16:00","timestamp":"2025-09-16T16:00:00","eColi":6600.0,"ie":3400.0,"hubac":4.5,"rubac":6.0,"hubacRaw":"4.5","rubacRaw":"6"},{"site":"Scotton Mill","siteRank":4,"date":"06/05/2025","time":"12:59","timestamp":"2025-05-06T12:59:00","eColi":140000.0,"ie":1700.0,"hubac":5.9,"rubac":4.1,"hubacRaw":"5.9","rubacRaw":"4.1"},{"site":"Scotton Mill","siteRank":4,"date":"31/05/2025","time":"14:50","timestamp":"2025-05-31T14:50:00","eColi":5600.0,"ie":880.0,"hubac":5.3,"rubac":4.5,"hubacRaw":"5.3","rubacRaw":"4.5"},{"site":"Scotton Mill","siteRank":4,"date":"23/06/2025","time":"13:35","timestamp":"2025-06-23T13:35:00","eColi":8500.0,"ie":1100.0,"hubac":5.5,"rubac":4.9,"hubacRaw":"5.5","rubacRaw":"4.9"},{"site":"Scotton Mill","siteRank":4,"date":"16/07/2025","time":"12:11","timestamp":"2025-07-16T12:11:00","eColi":18000.0,"ie":4800.0,"hubac":5.5,"rubac":4.7,"hubacRaw":"5.5","rubacRaw":"4.7"},{"site":"Scotton Mill","siteRank":4,"date":"31/07/2025","time":"12:50","timestamp":"2025-07-31T12:50:00","eColi":6600.0,"ie":910.0,"hubac":5.0,"rubac":3.8,"hubacRaw":"5","rubacRaw":"3.8"},{"site":"Scotton Mill","siteRank":4,"date":"23/09/2025","time":"12:58","timestamp":"2025-09-23T12:58:00","eColi":6100.0,"ie":1600.0,"hubac":5.2,"rubac":5.4,"hubacRaw":"5.2","rubacRaw":"5.4"},{"site":"Hampsthwaite","siteRank":3,"date":"06/05/2025","time":"12:41","timestamp":"2025-05-06T12:41:00","eColi":600.0,"ie":18.0,"hubac":4.3,"rubac":4.0,"hubacRaw":"4.3","rubacRaw":"4"},{"site":"Hampsthwaite","siteRank":3,"date":"31/05/2025","time":"14:05","timestamp":"2025-05-31T14:05:00","eColi":560.0,"ie":240.0,"hubac":3.5,"rubac":4.4,"hubacRaw":"3.5","rubacRaw":"4.4"},{"site":"Hampsthwaite","siteRank":3,"date":"23/06/2025","time":"13:09","timestamp":"2025-06-23T13:09:00","eColi":7800.0,"ie":930.0,"hubac":5.0,"rubac":4.3,"hubacRaw":"5","rubacRaw":"4.3"},{"site":"Hampsthwaite","siteRank":3,"date":"16/07/2025","time":"11:54","timestamp":"2025-07-16T11:54:00","eColi":25000.0,"ie":5300.0,"hubac":4.7,"rubac":5.0,"hubacRaw":"4.7","rubacRaw":"5"},{"site":"Hampsthwaite","siteRank":3,"date":"31/07/2025","time":"12:28","timestamp":"2025-07-31T12:28:00","eColi":1200.0,"ie":420.0,"hubac":3.7,"rubac":4.2,"hubacRaw":"3.7","rubacRaw":"4.2"},{"site":"Hampsthwaite","siteRank":3,"date":"23/09/2025","time":"12:29","timestamp":"2025-09-23T12:29:00","eColi":3100.0,"ie":700.0,"hubac":4.4,"rubac":5.3,"hubacRaw":"4.4","rubacRaw":"5.3"},{"site":"Summerbridge","siteRank":2,"date":"06/05/2025","time":"12:15","timestamp":"2025-05-06T12:15:00","eColi":670.0,"ie":45.0,"hubac":4.2,"rubac":4.7,"hubacRaw":"4.2","rubacRaw":"4.7"},{"site":"Summerbridge","siteRank":2,"date":"31/05/2025","time":"13:35","timestamp":"2025-05-31T13:35:00","eColi":650.0,"ie":120.0,"hubac":3.9,"rubac":4.0,"hubacRaw":"3.9","rubacRaw":"4"},{"site":"Summerbridge","siteRank":2,"date":"23/06/2025","time":"12:46","timestamp":"2025-06-23T12:46:00","eColi":3800.0,"ie":310.0,"hubac":4.5,"rubac":4.5,"hubacRaw":"4.5","rubacRaw":"4.5"},{"site":"Summerbridge","siteRank":2,"date":"16/07/2025","time":"11:34","timestamp":"2025-07-16T11:34:00","eColi":17000.0,"ie":6400.0,"hubac":5.3,"rubac":5.0,"hubacRaw":"5.3","rubacRaw":"5"},{"site":"Summerbridge","siteRank":2,"date":"31/07/2025","time":"12:05","timestamp":"2025-07-31T12:05:00","eColi":1400.0,"ie":220.0,"hubac":4.1,"rubac":3.9,"hubacRaw":"4.1","rubacRaw":"3.9"},{"site":"Summerbridge","siteRank":2,"date":"23/09/2025","time":"12:09","timestamp":"2025-09-23T12:09:00","eColi":6300.0,"ie":790.0,"hubac":4.3,"rubac":5.4,"hubacRaw":"4.3","rubacRaw":"5.4"},{"site":"Pateley Bridge","siteRank":1,"date":"06/05/2025","time":"11:54","timestamp":"2025-05-06T11:54:00","eColi":null,"ie":null,"hubac":3.5,"rubac":2.7,"hubacRaw":"3.5","rubacRaw":"2.7"},{"site":"Pateley Bridge","siteRank":1,"date":"31/05/2025","time":"13:00","timestamp":"2025-05-31T13:00:00","eColi":2300.0,"ie":230.0,"hubac":4.6,"rubac":3.7,"hubacRaw":"4.6","rubacRaw":"3.7"},{"site":"Pateley Bridge","siteRank":1,"date":"23/06/2025","time":"12:31","timestamp":"2025-06-23T12:31:00","eColi":3800.0,"ie":200.0,"hubac":3.2,"rubac":4.2,"hubacRaw":"3.2","rubacRaw":"4.2"},{"site":"Pateley Bridge","siteRank":1,"date":"16/07/2025","time":"11:15","timestamp":"2025-07-16T11:15:00","eColi":5300.0,"ie":970.0,"hubac":3.4,"rubac":4.5,"hubacRaw":"3.4","rubacRaw":"4.5"},{"site":"Pateley Bridge","siteRank":1,"date":"31/07/2025","time":"11:28","timestamp":"2025-07-31T11:28:00","eColi":670.0,"ie":130.0,"hubac":2.0,"rubac":3.5,"hubacRaw":"<2","rubacRaw":"3.5"},{"site":"Pateley Bridge","siteRank":1,"date":"23/09/2025","time":"11:51","timestamp":"2025-09-23T11:51:00","eColi":5400.0,"ie":2000.0,"hubac":4.0,"rubac":5.7,"hubacRaw":"4","rubacRaw":"5.7"}],"mstSiteSummaries":[{"site":"Pateley Bridge","siteRank":1,"sampleCount":6,"meanHubac":3.4500000000000006,"meanRubac":4.05,"dominantMarker":"rubac"},{"site":"Summerbridge","siteRank":2,"sampleCount":6,"meanHubac":4.383333333333334,"meanRubac":4.583333333333333,"dominantMarker":"rubac"},{"site":"Hampsthwaite","siteRank":3,"sampleCount":24,"meanHubac":4.241666666666667,"meanRubac":4.770833333333333,"dominantMarker":"rubac"},{"site":"Scotton Mill","siteRank":4,"sampleCount":6,"meanHubac":5.3999999999999995,"meanRubac":4.566666666666666,"dominantMarker":"hubac"},{"site":"Knaresborough Lido","siteRank":5,"sampleCount":29,"meanHubac":4.789655172413793,"meanRubac":4.311111111111111,"dominantMarker":"hubac"}],"mstSnapshots":[{"date":"06/05/2025","siteCount":5,"sites":["Pateley Bridge","Summerbridge","Hampsthwaite","Scotton Mill","Knaresborough Lido"],"meanHubac":4.6,"meanRubac":3.7599999999999993,"dominantMarker":"hubac","samples":[{"site":"Pateley Bridge","siteRank":1,"date":"06/05/2025","time":"11:54","timestamp":"2025-05-06T11:54:00","eColi":null,"ie":null,"hubac":3.5,"rubac":2.7,"hubacRaw":"3.5","rubacRaw":"2.7"},{"site":"Summerbridge","siteRank":2,"date":"06/05/2025","time":"12:15","timestamp":"2025-05-06T12:15:00","eColi":670.0,"ie":45.0,"hubac":4.2,"rubac":4.7,"hubacRaw":"4.2","rubacRaw":"4.7"},{"site":"Hampsthwaite","siteRank":3,"date":"06/05/2025","time":"12:41","timestamp":"2025-05-06T12:41:00","eColi":600.0,"ie":18.0,"hubac":4.3,"rubac":4.0,"hubacRaw":"4.3","rubacRaw":"4"},{"site":"Scotton Mill","siteRank":4,"date":"06/05/2025","time":"12:59","timestamp":"2025-05-06T12:59:00","eColi":140000.0,"ie":1700.0,"hubac":5.9,"rubac":4.1,"hubacRaw":"5.9","rubacRaw":"4.1"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/05/2025","time":"13:28","timestamp":"2025-05-06T13:28:00","eColi":2000.0,"ie":160.0,"hubac":5.1,"rubac":3.3,"hubacRaw":"5.1","rubacRaw":"3.3"}]},{"date":"31/05/2025","siteCount":5,"sites":["Pateley Bridge","Summerbridge","Hampsthwaite","Scotton Mill","Knaresborough Lido"],"meanHubac":4.42,"meanRubac":4.26,"dominantMarker":"hubac","samples":[{"site":"Pateley Bridge","siteRank":1,"date":"31/05/2025","time":"13:00","timestamp":"2025-05-31T13:00:00","eColi":2300.0,"ie":230.0,"hubac":4.6,"rubac":3.7,"hubacRaw":"4.6","rubacRaw":"3.7"},{"site":"Summerbridge","siteRank":2,"date":"31/05/2025","time":"13:35","timestamp":"2025-05-31T13:35:00","eColi":650.0,"ie":120.0,"hubac":3.9,"rubac":4.0,"hubacRaw":"3.9","rubacRaw":"4"},{"site":"Hampsthwaite","siteRank":3,"date":"31/05/2025","time":"14:05","timestamp":"2025-05-31T14:05:00","eColi":560.0,"ie":240.0,"hubac":3.5,"rubac":4.4,"hubacRaw":"3.5","rubacRaw":"4.4"},{"site":"Scotton Mill","siteRank":4,"date":"31/05/2025","time":"14:50","timestamp":"2025-05-31T14:50:00","eColi":5600.0,"ie":880.0,"hubac":5.3,"rubac":4.5,"hubacRaw":"5.3","rubacRaw":"4.5"},{"site":"Knaresborough Lido","siteRank":5,"date":"31/05/2025","time":"15:30","timestamp":"2025-05-31T15:30:00","eColi":900.0,"ie":210.0,"hubac":4.8,"rubac":4.7,"hubacRaw":"4.8","rubacRaw":"4.7"}]},{"date":"23/06/2025","siteCount":5,"sites":["Pateley Bridge","Summerbridge","Hampsthwaite","Scotton Mill","Knaresborough Lido"],"meanHubac":4.4799999999999995,"meanRubac":4.475,"dominantMarker":"hubac","samples":[{"site":"Pateley Bridge","siteRank":1,"date":"23/06/2025","time":"12:31","timestamp":"2025-06-23T12:31:00","eColi":3800.0,"ie":200.0,"hubac":3.2,"rubac":4.2,"hubacRaw":"3.2","rubacRaw":"4.2"},{"site":"Summerbridge","siteRank":2,"date":"23/06/2025","time":"12:46","timestamp":"2025-06-23T12:46:00","eColi":3800.0,"ie":310.0,"hubac":4.5,"rubac":4.5,"hubacRaw":"4.5","rubacRaw":"4.5"},{"site":"Hampsthwaite","siteRank":3,"date":"23/06/2025","time":"13:09","timestamp":"2025-06-23T13:09:00","eColi":7800.0,"ie":930.0,"hubac":5.0,"rubac":4.3,"hubacRaw":"5","rubacRaw":"4.3"},{"site":"Scotton Mill","siteRank":4,"date":"23/06/2025","time":"13:35","timestamp":"2025-06-23T13:35:00","eColi":8500.0,"ie":1100.0,"hubac":5.5,"rubac":4.9,"hubacRaw":"5.5","rubacRaw":"4.9"},{"site":"Knaresborough Lido","siteRank":5,"date":"23/06/2025","time":"14:05","timestamp":"2025-06-23T14:05:00","eColi":780.0,"ie":220.0,"hubac":4.2,"rubac":null,"hubacRaw":"4.2","rubacRaw":"N/F"}]},{"date":"16/07/2025","siteCount":5,"sites":["Pateley Bridge","Summerbridge","Hampsthwaite","Scotton Mill","Knaresborough Lido"],"meanHubac":4.7,"meanRubac":4.54,"dominantMarker":"hubac","samples":[{"site":"Pateley Bridge","siteRank":1,"date":"16/07/2025","time":"11:15","timestamp":"2025-07-16T11:15:00","eColi":5300.0,"ie":970.0,"hubac":3.4,"rubac":4.5,"hubacRaw":"3.4","rubacRaw":"4.5"},{"site":"Summerbridge","siteRank":2,"date":"16/07/2025","time":"11:34","timestamp":"2025-07-16T11:34:00","eColi":17000.0,"ie":6400.0,"hubac":5.3,"rubac":5.0,"hubacRaw":"5.3","rubacRaw":"5"},{"site":"Hampsthwaite","siteRank":3,"date":"16/07/2025","time":"11:54","timestamp":"2025-07-16T11:54:00","eColi":25000.0,"ie":5300.0,"hubac":4.7,"rubac":5.0,"hubacRaw":"4.7","rubacRaw":"5"},{"site":"Scotton Mill","siteRank":4,"date":"16/07/2025","time":"12:11","timestamp":"2025-07-16T12:11:00","eColi":18000.0,"ie":4800.0,"hubac":5.5,"rubac":4.7,"hubacRaw":"5.5","rubacRaw":"4.7"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/07/2025","time":"12:34","timestamp":"2025-07-16T12:34:00","eColi":1400.0,"ie":530.0,"hubac":4.6,"rubac":3.5,"hubacRaw":"4.6","rubacRaw":"3.5"}]},{"date":"25/07/2025","siteCount":1,"sites":["Knaresborough Lido"],"meanHubac":5.1,"meanRubac":null,"dominantMarker":"mixed","samples":[{"site":"Knaresborough Lido","siteRank":5,"date":"25/07/2025","time":"11:26","timestamp":"2025-07-25T11:26:00","eColi":2400.0,"ie":420.0,"hubac":5.1,"rubac":null,"hubacRaw":"5.1","rubacRaw":"N/F"}]},{"date":"31/07/2025","siteCount":5,"sites":["Pateley Bridge","Summerbridge","Hampsthwaite","Scotton Mill","Knaresborough Lido"],"meanHubac":3.8,"meanRubac":3.85,"dominantMarker":"rubac","samples":[{"site":"Pateley Bridge","siteRank":1,"date":"31/07/2025","time":"11:28","timestamp":"2025-07-31T11:28:00","eColi":670.0,"ie":130.0,"hubac":2.0,"rubac":3.5,"hubacRaw":"<2","rubacRaw":"3.5"},{"site":"Summerbridge","siteRank":2,"date":"31/07/2025","time":"12:05","timestamp":"2025-07-31T12:05:00","eColi":1400.0,"ie":220.0,"hubac":4.1,"rubac":3.9,"hubacRaw":"4.1","rubacRaw":"3.9"},{"site":"Hampsthwaite","siteRank":3,"date":"31/07/2025","time":"12:28","timestamp":"2025-07-31T12:28:00","eColi":1200.0,"ie":420.0,"hubac":3.7,"rubac":4.2,"hubacRaw":"3.7","rubacRaw":"4.2"},{"site":"Scotton Mill","siteRank":4,"date":"31/07/2025","time":"12:50","timestamp":"2025-07-31T12:50:00","eColi":6600.0,"ie":910.0,"hubac":5.0,"rubac":3.8,"hubacRaw":"5","rubacRaw":"3.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"31/07/2025","time":"13:18","timestamp":"2025-07-31T13:18:00","eColi":720.0,"ie":110.0,"hubac":4.2,"rubac":null,"hubacRaw":"4.2","rubacRaw":"N/F"}]},{"date":"06/08/2025","siteCount":2,"sites":["Hampsthwaite","Knaresborough Lido"],"meanHubac":4.066666666666666,"meanRubac":3.8875,"dominantMarker":"hubac","samples":[{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"09:31","timestamp":"2025-08-06T09:31:00","eColi":1800.0,"ie":280.0,"hubac":3.9,"rubac":4.8,"hubacRaw":"3.9","rubacRaw":"4.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"10:00","timestamp":"2025-08-06T10:00:00","eColi":1100.0,"ie":170.0,"hubac":4.5,"rubac":2.0,"hubacRaw":"4.5","rubacRaw":"<2"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"10:30","timestamp":"2025-08-06T10:30:00","eColi":1600.0,"ie":390.0,"hubac":3.5,"rubac":4.8,"hubacRaw":"3.5","rubacRaw":"4.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"11:00","timestamp":"2025-08-06T11:00:00","eColi":1100.0,"ie":86.0,"hubac":4.7,"rubac":3.3,"hubacRaw":"4.7","rubacRaw":"3.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"11:30","timestamp":"2025-08-06T11:30:00","eColi":1200.0,"ie":63.0,"hubac":4.8,"rubac":3.0,"hubacRaw":"4.8","rubacRaw":"3"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"13:00","timestamp":"2025-08-06T13:00:00","eColi":890.0,"ie":340.0,"hubac":3.6,"rubac":3.9,"hubacRaw":"3.6","rubacRaw":"3.9"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"14:00","timestamp":"2025-08-06T14:00:00","eColi":900.0,"ie":420.0,"hubac":3.3,"rubac":3.9,"hubacRaw":"3.3","rubacRaw":"3.9"},{"site":"Knaresborough Lido","siteRank":5,"date":"06/08/2025","time":"14:30","timestamp":"2025-08-06T14:30:00","eColi":910.0,"ie":72.0,"hubac":4.6,"rubac":null,"hubacRaw":"4.6","rubacRaw":"N/F"},{"site":"Hampsthwaite","siteRank":3,"date":"06/08/2025","time":"14:30","timestamp":"2025-08-06T14:30:00","eColi":2100.0,"ie":380.0,"hubac":3.7,"rubac":5.4,"hubacRaw":"3.7","rubacRaw":"5.4"}]},{"date":"20/08/2025","siteCount":2,"sites":["Hampsthwaite","Knaresborough Lido"],"meanHubac":4.183333333333334,"meanRubac":4.2,"dominantMarker":"rubac","samples":[{"site":"Hampsthwaite","siteRank":3,"date":"20/08/2025","time":"11:30","timestamp":"2025-08-20T11:30:00","eColi":2200.0,"ie":480.0,"hubac":4.7,"rubac":4.3,"hubacRaw":"4.7","rubacRaw":"4.3"},{"site":"Hampsthwaite","siteRank":3,"date":"20/08/2025","time":"13:00","timestamp":"2025-08-20T13:00:00","eColi":2500.0,"ie":380.0,"hubac":4.4,"rubac":3.8,"hubacRaw":"4.4","rubacRaw":"3.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"20/08/2025","time":"13:08","timestamp":"2025-08-20T13:08:00","eColi":180.0,"ie":27.0,"hubac":3.7,"rubac":null,"hubacRaw":"3.7","rubacRaw":"N/F"},{"site":"Hampsthwaite","siteRank":3,"date":"20/08/2025","time":"14:30","timestamp":"2025-08-20T14:30:00","eColi":2200.0,"ie":520.0,"hubac":4.6,"rubac":4.5,"hubacRaw":"4.6","rubacRaw":"4.5"},{"site":"Knaresborough Lido","siteRank":5,"date":"20/08/2025","time":"15:08","timestamp":"2025-08-20T15:08:00","eColi":270.0,"ie":10.0,"hubac":3.8,"rubac":null,"hubacRaw":"3.8","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"20/08/2025","time":"15:38","timestamp":"2025-08-20T15:38:00","eColi":200.0,"ie":36.0,"hubac":3.9,"rubac":null,"hubacRaw":"3.9","rubacRaw":"N/F"}]},{"date":"03/09/2025","siteCount":2,"sites":["Hampsthwaite","Knaresborough Lido"],"meanHubac":4.1,"meanRubac":4.266666666666667,"dominantMarker":"rubac","samples":[{"site":"Hampsthwaite","siteRank":3,"date":"03/09/2025","time":"12:05","timestamp":"2025-09-03T12:05:00","eColi":1000.0,"ie":350.0,"hubac":4.0,"rubac":4.4,"hubacRaw":"4.0","rubacRaw":"4.4"},{"site":"Hampsthwaite","siteRank":3,"date":"03/09/2025","time":"12:30","timestamp":"2025-09-03T12:30:00","eColi":1000.0,"ie":540.0,"hubac":4.0,"rubac":4.3,"hubacRaw":"4.0","rubacRaw":"4.3"},{"site":"Hampsthwaite","siteRank":3,"date":"03/09/2025","time":"12:55","timestamp":"2025-09-03T12:55:00","eColi":1200.0,"ie":570.0,"hubac":4.0,"rubac":4.1,"hubacRaw":"4.0","rubacRaw":"4.1"},{"site":"Knaresborough Lido","siteRank":5,"date":"03/09/2025","time":"15:00","timestamp":"2025-09-03T15:00:00","eColi":500.0,"ie":280.0,"hubac":4.2,"rubac":null,"hubacRaw":"4.2","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"03/09/2025","time":"15:30","timestamp":"2025-09-03T15:30:00","eColi":540.0,"ie":170.0,"hubac":4.3,"rubac":null,"hubacRaw":"4.3","rubacRaw":"N/F"}]},{"date":"09/09/2025","siteCount":2,"sites":["Hampsthwaite","Knaresborough Lido"],"meanHubac":4.55,"meanRubac":4.075,"dominantMarker":"hubac","samples":[{"site":"Hampsthwaite","siteRank":3,"date":"09/09/2025","time":"12:31","timestamp":"2025-09-09T12:31:00","eColi":13000.0,"ie":370.0,"hubac":4.5,"rubac":5.3,"hubacRaw":"4.5","rubacRaw":"5.3"},{"site":"Hampsthwaite","siteRank":3,"date":"09/09/2025","time":"13:30","timestamp":"2025-09-09T13:30:00","eColi":6800.0,"ie":310.0,"hubac":4.4,"rubac":4.8,"hubacRaw":"4.4","rubacRaw":"4.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"09/09/2025","time":"15:00","timestamp":"2025-09-09T15:00:00","eColi":490.0,"ie":72.0,"hubac":4.5,"rubac":null,"hubacRaw":"4.5","rubacRaw":"N/F"},{"site":"Knaresborough Lido","siteRank":5,"date":"09/09/2025","time":"15:30","timestamp":"2025-09-09T15:30:00","eColi":640.0,"ie":63.0,"hubac":4.6,"rubac":null,"hubacRaw":"4.6","rubacRaw":"N/F"},{"site":"Hampsthwaite","siteRank":3,"date":"09/09/2025","time":"15:30","timestamp":"2025-09-09T15:30:00","eColi":2400.0,"ie":340.0,"hubac":4.7,"rubac":4.2,"hubacRaw":"4.7","rubacRaw":"4.2"},{"site":"Knaresborough Lido","siteRank":5,"date":"09/09/2025","time":"16:00","timestamp":"2025-09-09T16:00:00","eColi":540.0,"ie":63.0,"hubac":4.6,"rubac":2.0,"hubacRaw":"4.6","rubacRaw":"<2"}]},{"date":"10/09/2025","siteCount":1,"sites":["Knaresborough Lido"],"meanHubac":4.625,"meanRubac":2.825,"dominantMarker":"hubac","samples":[{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"14:00","timestamp":"2025-09-10T14:00:00","eColi":620.0,"ie":90.0,"hubac":4.7,"rubac":3.1,"hubacRaw":"4.7","rubacRaw":"3.1"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"14:30","timestamp":"2025-09-10T14:30:00","eColi":1200.0,"ie":230.0,"hubac":4.5,"rubac":3.4,"hubacRaw":"4.5","rubacRaw":"3.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"15:00","timestamp":"2025-09-10T15:00:00","eColi":760.0,"ie":140.0,"hubac":4.8,"rubac":2.8,"hubacRaw":"4.8","rubacRaw":"2.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"10/09/2025","time":"15:30","timestamp":"2025-09-10T15:30:00","eColi":780.0,"ie":150.0,"hubac":4.5,"rubac":2.0,"hubacRaw":"4.5","rubacRaw":"<2"}]},{"date":"16/09/2025","siteCount":2,"sites":["Hampsthwaite","Knaresborough Lido"],"meanHubac":5.380000000000001,"meanRubac":6.35,"dominantMarker":"rubac","samples":[{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"09:00","timestamp":"2025-09-16T09:00:00","eColi":15000.0,"ie":9600.0,"hubac":5.0,"rubac":6.4,"hubacRaw":"5","rubacRaw":"6.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"10:30","timestamp":"2025-09-16T10:30:00","eColi":12000.0,"ie":5000.0,"hubac":5.9,"rubac":6.2,"hubacRaw":"5.9","rubacRaw":"6.2"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"10:30","timestamp":"2025-09-16T10:30:00","eColi":10000.0,"ie":8800.0,"hubac":4.7,"rubac":6.4,"hubacRaw":"4.7","rubacRaw":"6.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"11:00","timestamp":"2025-09-16T11:00:00","eColi":26000.0,"ie":5200.0,"hubac":5.9,"rubac":6.3,"hubacRaw":"5.9","rubacRaw":"6.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"11:30","timestamp":"2025-09-16T11:30:00","eColi":14000.0,"ie":5500.0,"hubac":5.8,"rubac":6.3,"hubacRaw":"5.8","rubacRaw":"6.3"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"13:00","timestamp":"2025-09-16T13:00:00","eColi":15000.0,"ie":7900.0,"hubac":5.7,"rubac":6.4,"hubacRaw":"5.7","rubacRaw":"6.4"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"14:30","timestamp":"2025-09-16T14:30:00","eColi":6300.0,"ie":3800.0,"hubac":4.7,"rubac":6.0,"hubacRaw":"4.7","rubacRaw":"6"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"15:00","timestamp":"2025-09-16T15:00:00","eColi":16000.0,"ie":6400.0,"hubac":5.8,"rubac":6.8,"hubacRaw":"5.8","rubacRaw":"6.8"},{"site":"Knaresborough Lido","siteRank":5,"date":"16/09/2025","time":"15:30","timestamp":"2025-09-16T15:30:00","eColi":15000.0,"ie":7400.0,"hubac":5.8,"rubac":6.7,"hubacRaw":"5.8","rubacRaw":"6.7"},{"site":"Hampsthwaite","siteRank":3,"date":"16/09/2025","time":"16:00","timestamp":"2025-09-16T16:00:00","eColi":6600.0,"ie":3400.0,"hubac":4.5,"rubac":6.0,"hubacRaw":"4.5","rubacRaw":"6"}]},{"date":"23/09/2025","siteCount":5,"sites":["Pateley Bridge","Summerbridge","Hampsthwaite","Scotton Mill","Knaresborough Lido"],"meanHubac":4.64,"meanRubac":5.52,"dominantMarker":"rubac","samples":[{"site":"Pateley Bridge","siteRank":1,"date":"23/09/2025","time":"11:51","timestamp":"2025-09-23T11:51:00","eColi":5400.0,"ie":2000.0,"hubac":4.0,"rubac":5.7,"hubacRaw":"4","rubacRaw":"5.7"},{"site":"Summerbridge","siteRank":2,"date":"23/09/2025","time":"12:09","timestamp":"2025-09-23T12:09:00","eColi":6300.0,"ie":790.0,"hubac":4.3,"rubac":5.4,"hubacRaw":"4.3","rubacRaw":"5.4"},{"site":"Hampsthwaite","siteRank":3,"date":"23/09/2025","time":"12:29","timestamp":"2025-09-23T12:29:00","eColi":3100.0,"ie":700.0,"hubac":4.4,"rubac":5.3,"hubacRaw":"4.4","rubacRaw":"5.3"},{"site":"Scotton Mill","siteRank":4,"date":"23/09/2025","time":"12:58","timestamp":"2025-09-23T12:58:00","eColi":6100.0,"ie":1600.0,"hubac":5.2,"rubac":5.4,"hubacRaw":"5.2","rubacRaw":"5.4"},{"site":"Knaresborough Lido","siteRank":5,"date":"23/09/2025","time":"13:25","timestamp":"2025-09-23T13:25:00","eColi":5900.0,"ie":790.0,"hubac":5.3,"rubac":5.8,"hubacRaw":"5.3","rubacRaw":"5.8"}]}]};
+</script>
+    <script>
+const data = window.RIVER_NIDD_DATA;
+
+const state = {
+  mode: "standards",
+  indicator: "eColi",
+  driver: "rain",
+  rainfallCondition: "some",
+  mstDate: data.mstSnapshots[0]?.date ?? "",
+};
+
+const bngDef =
+  "+proj=tmerc +lat_0=49 +lon_0=-2 +k=0.9996012717 +x_0=400000 +y_0=-100000 +ellps=airy +datum=OSGB36 +units=m +no_defs";
+
+const researchQuestion = document.querySelector("#research-question");
+const findingsGrid = document.querySelector("#findings-grid");
+const methodList = document.querySelector("#method-list");
+const statsRoot = document.querySelector("#headline-stats");
+const legendRoot = document.querySelector("#legend");
+const scatterLegendRoot = document.querySelector("#scatter-legend");
+const mapTitle = document.querySelector("#map-title");
+const modeTitle = document.querySelector("#mode-title");
+const modeSummary = document.querySelector("#mode-summary");
+const subchartKicker = document.querySelector("#subchart-kicker");
+const subchartTitle = document.querySelector("#subchart-title");
+const selectionTitle = document.querySelector("#selection-title");
+const selectionSummary = document.querySelector("#selection-summary");
+const siteBars = document.querySelector("#site-bars");
+const supportingEvidence = document.querySelector("#supporting-evidence");
+const mstDateSelect = document.querySelector("#mst-date-select");
+const mstSnapshotCopy = document.querySelector("#mst-snapshot-copy");
+const mstSelectWrap = document.querySelector("#mst-select-wrap");
+const metricSwitchWrap = document.querySelector("#metric-switch-wrap");
+const driverSwitchWrap = document.querySelector("#driver-switch-wrap");
+const rainfallConditionWrap = document.querySelector("#rainfall-condition-wrap");
+const lidoCaseWrap = document.querySelector("#lido-case-wrap");
+const lidoCaseSnapshot = document.querySelector("#lido-case-snapshot");
+const ecoliScatterRoot = document.querySelector("#ecoli-scatter");
+const ieScatterRoot = document.querySelector("#ie-scatter");
+const scatterNote = document.querySelector("#scatter-note");
+
+researchQuestion.textContent =
+  "This case study uses River Nidd bacteria, rainfall and bathing-water threshold evidence to show how recent weather can change local swimming risk from site to site.";
+
+[
+  "Standards mode uses inland bathing-water thresholds from the provided rating guide.",
+  "Sufficient is checked against the 90th percentile; Good and Excellent are checked against the 95th percentile.",
+  `Only samples dated on or after ${data.story.dateCutoff} are included.`,
+  "Rainfall response uses the first available 3-day rainfall field: Rainfall.3_day_sum_mm, rainfall.3_day_sum_mm, or Rainfall_72h_sum_mm.",
+].forEach((note) => {
+  const item = document.createElement("li");
+  item.textContent = note;
+  methodList.appendChild(item);
+});
+
+for (const snapshot of data.mstSnapshots) {
+  const option = document.createElement("option");
+  option.value = snapshot.date;
+  option.textContent = `${snapshot.date} (${snapshot.siteCount} sites)`;
+  mstDateSelect.appendChild(option);
+}
+
+mstDateSelect.value = state.mstDate;
+mstDateSelect.addEventListener("change", (event) => {
+  state.mstDate = event.target.value;
+  if (state.mode === "mst") {
+    render();
+  }
+});
+
+document.querySelectorAll("#story-tabs button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.mode = button.dataset.mode;
+    document
+      .querySelectorAll("#story-tabs button")
+      .forEach((node) => node.classList.toggle("active", node === button));
+    render();
+  });
+});
+
+document.querySelectorAll("#metric-tabs button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.indicator = button.dataset.indicator;
+    document
+      .querySelectorAll("#metric-tabs button")
+      .forEach((node) => node.classList.toggle("active", node === button));
+    render();
+  });
+});
+
+document.querySelectorAll("#driver-tabs button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.driver = button.dataset.driver;
+    document
+      .querySelectorAll("#driver-tabs button")
+      .forEach((node) => node.classList.toggle("active", node === button));
+    render();
+  });
+});
+
+document.querySelectorAll("#rainfall-condition-tabs button").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.rainfallCondition = button.dataset.rainfallCondition;
+    document
+      .querySelectorAll("#rainfall-condition-tabs button")
+      .forEach((node) => node.classList.toggle("active", node === button));
+    render();
+  });
+});
+
+function indicatorLabel() {
+  return state.indicator === "eColi" ? "E. coli" : "IE";
+}
+
+function formatNumber(value, digits = 0) {
+  if (value === null || value === undefined || Number.isNaN(value)) {
+    return "n/a";
+  }
+  return new Intl.NumberFormat("en-GB", {
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits,
+  }).format(value);
+}
+
+function percentile(values, fraction) {
+  const sorted = values
+    .filter((value) => value !== null && value !== undefined && !Number.isNaN(value))
+    .sort((a, b) => a - b);
+  if (!sorted.length) {
+    return null;
+  }
+  if (sorted.length === 1) {
+    return sorted[0];
+  }
+  const index = (sorted.length - 1) * fraction;
+  const lower = Math.floor(index);
+  const upper = Math.min(lower + 1, sorted.length - 1);
+  const weight = index - lower;
+  return sorted[lower] * (1 - weight) + sorted[upper] * weight;
+}
+
+function colourScale(value, min, max) {
+  if (value === null || value === undefined) {
+    return "#adb9b1";
+  }
+  if (min === max) {
+    return "#23695a";
+  }
+  const ratio = (value - min) / (max - min);
+  const hue = 10 + (1 - ratio) * 150;
+  const saturation = 65;
+  const lightness = 44 + (1 - ratio) * 26;
+  return `hsl(${hue} ${saturation}% ${lightness}%)`;
+}
+
+function classificationColor(value) {
+  return {
+    Excellent: "#2d9cdb",
+    Good: "#2fb35c",
+    Sufficient: "#f1c644",
+    Poor: "#d86a2b",
+  }[value] || "#adb9b1";
+}
+
+function convertLocation(location) {
+  const [lng, lat] = proj4(bngDef, "WGS84", [location.x, location.y]);
+  return { ...location, lat, lng };
+}
+
+const locationsLatLng = data.locations.map(convertLocation);
+const map = L.map("river-map", {
+  zoomControl: true,
+  scrollWheelZoom: true,
+});
+
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+  attribution: "&copy; OpenStreetMap contributors",
+  maxZoom: 18,
+}).addTo(map);
+
+const riverLine = L.polyline(
+  locationsLatLng.map((location) => [location.lat, location.lng]),
+  { color: "#2f6f97", weight: 4, opacity: 0.9, dashArray: "10 8" }
+).addTo(map);
+
+const markerLayer = L.layerGroup().addTo(map);
+map.fitBounds(riverLine.getBounds().pad(0.25));
+
+const sitePalette = {
+  "Pateley Bridge": "#2d9cdb",
+  Summerbridge: "#38a169",
+  Hampsthwaite: "#dd8a2d",
+  "Scotton Mill": "#d85f49",
+  "Knaresborough Lido": "#7a5af8",
+};
+
+function modeConfig() {
+  const mstSnapshot = data.mstSnapshots.find((item) => item.date === state.mstDate);
+  const label = indicatorLabel();
+
+  if (state.mode === "standards") {
+    const classKey = state.indicator === "eColi" ? "eColiClass" : "ieClass";
+    const p90Key = state.indicator === "eColi" ? "eColiP90" : "ieP90";
+    const p95Key = state.indicator === "eColi" ? "eColiP95" : "ieP95";
+    return {
+      kind: "classification",
+      title: `${label} bathing-water classification`,
+      mapTitle: `${label} against inland bathing-water standards`,
+      summary:
+        "This view turns raw bacteria measurements into bathing-water classes using the provided inland thresholds. It is the closest view to the regulatory framing shown in the assessment guide.",
+      rows: data.analysis.standardsBySite.map((row) => ({
+        ...row,
+        value: row[classKey],
+        p90: row[p90Key],
+        p95: row[p95Key],
+      })),
+    };
+  }
+
+  if (state.mode === "river") {
+    const deltaKey = state.indicator === "eColi" ? "deltaFromUpstreamEColi" : "deltaFromUpstreamIE";
+    return {
+      kind: "delta",
+      unit: "cfu / 100ml",
+      digits: 0,
+      title: "Change from the most upstream site",
+      mapTitle: `${label} increase or decrease relative to Pateley Bridge`,
+      summary:
+        "This view compares each site against the most upstream point. It shows where pollution appears to build along the river corridor rather than just which site has a large raw value.",
+      rows: data.analysis.spatialGradient.map((row) => ({
+        ...row,
+        value: row[deltaKey],
+      })),
+    };
+  }
+
+  if (state.mode === "drivers") {
+    if (state.driver === "rain") {
+      const isSomeRain = state.rainfallCondition === "some";
+      const deltaKey = state.indicator === "eColi"
+        ? (isSomeRain ? "someRainDeltaEColi" : "highRainDeltaEColi")
+        : (isSomeRain ? "someRainDeltaIE" : "highRainDeltaIE");
+      const wetKey = state.indicator === "eColi"
+        ? (isSomeRain ? "someRainMeanEColi" : "highRainMeanEColi")
+        : (isSomeRain ? "someRainMeanIE" : "highRainMeanIE");
+      const dryKey = state.indicator === "eColi" ? "dryMeanEColi" : "dryMeanIE";
+      return {
+        kind: "delta",
+        unit: "cfu / 100ml",
+        digits: 0,
+        title: `${isSomeRain ? "Some-rain" : "High-rain"} minus dry ${label} response`,
+        mapTitle: `How much ${label} rises after ${isSomeRain ? "some rain" : "high rain"}`,
+        summary:
+          `This view compares the dry baseline against samples collected after ${isSomeRain ? "some rain (0-5 mm over 3 days)" : "high rain (>5 mm over 3 days)"}. It shows how much bacteria levels rise under the selected rainfall condition rather than mixing all recent rainfall into one result.`,
+        rows: data.analysis.rainfallResponseBySite.map((row) => ({
+          ...row,
+          value: row[deltaKey],
+          lowValue: row[dryKey],
+          highValue: row[wetKey],
+        })),
+      };
+    }
+
+    const deltaKey = state.indicator === "eColi" ? "highLowDeltaEColi" : "highLowDeltaIE";
+    const highKey = state.indicator === "eColi" ? "highMeanEColi" : "highMeanIE";
+    const lowKey = state.indicator === "eColi" ? "lowMeanEColi" : "lowMeanIE";
+    return {
+      kind: "delta",
+      unit: "cfu / 100ml",
+      digits: 0,
+      title: `High minus low river-level ${label} response`,
+      mapTitle: `How much ${label} changes when river level is above the median`,
+      summary:
+        "This view compares samples collected above and below the overall median river level. It highlights where higher river conditions coincide with worse bacterial results, even when rainfall itself is not the only visible driver.",
+      rows: data.analysis.riverLevelBySite.map((row) => ({
+        ...row,
+        value: row[deltaKey],
+        lowValue: row[lowKey],
+        highValue: row[highKey],
+      })),
+    };
+  }
+
+  if (state.mode === "case") {
+    return {
+      kind: "case",
+      title: "Knaresborough Lido case snapshot",
+      mapTitle: "River Nidd context with Knaresborough Lido highlighted",
+      summary:
+        "This focus view keeps the river-wide map in place, but shifts the evidence below to one-site time series. It is designed to show that short-term bacteria risk can shift fast even at a single bathing site.",
+      rows: data.siteSummaries.map((row) => ({
+        ...row,
+        value: row.site === "Knaresborough Lido" ? "case-site" : "context-site",
+      })),
+    };
+  }
+
+  return {
+    kind: "mst",
+    title: "Dominant MST marker by site",
+    mapTitle: "Hubac versus Rubac source clues",
+    summary:
+      "This view simplifies MST into the marker that is stronger on average at each site. It is useful as supporting evidence, but it should not be treated as proof of source.",
+    rows: data.analysis.mstBySite.map((row) => ({
+      ...row,
+      value: row.dominantMarker,
+    })),
+    snapshot: mstSnapshot,
+  };
+}
+
+function makeLegend(config) {
+  legendRoot.innerHTML = "";
+  let items = [];
+  if (config.kind === "classification") {
+    items = ["Excellent", "Good", "Sufficient", "Poor"].map((label) => ({
+      label,
+      color: classificationColor(label),
+    }));
+  } else if (config.kind === "mst") {
+    items = [
+      { label: "Rubac stronger", color: "#c65a28" },
+      { label: "Mixed", color: "#919f8f" },
+      { label: "Hubac stronger", color: "#23695a" },
+    ];
+  } else if (config.kind === "case") {
+    items = [
+      { label: "Case site", color: "#7a5af8" },
+      { label: "River context", color: "#c7d1cb" },
+    ];
+  } else {
+    legendRoot.innerHTML = `
+      <div class="legend-scale">
+        <div class="legend-scale-bar"></div>
+        <div class="legend-scale-labels">
+          <span>${formatNumber(config.min, config.digits ?? 0)}</span>
+          <span>${formatNumber((config.min + config.max) / 2, config.digits ?? 0)}</span>
+          <span>${formatNumber(config.max, config.digits ?? 0)}</span>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  items.forEach((item) => {
+    const node = document.createElement("div");
+    node.className = "legend-item";
+    node.innerHTML = `<span class="legend-swatch" style="background:${item.color}"></span><span>${item.label}</span>`;
+    legendRoot.appendChild(node);
+  });
+}
+
+function rowColor(row, config) {
+  if (config.kind === "classification") {
+    return classificationColor(row.value);
+  }
+  if (config.kind === "case") {
+    return row.site === "Knaresborough Lido" ? "#7a5af8" : "#c7d1cb";
+  }
+  if (config.kind === "mst") {
+    return row.value === "hubac" ? "#23695a" : row.value === "rubac" ? "#c65a28" : "#919f8f";
+  }
+  return colourScale(row.value, config.min, config.max);
+}
+
+function rowLabel(row, config) {
+  if (config.kind === "classification") {
+    return `${row.value} · p90 ${formatNumber(row.p90)} · p95 ${formatNumber(row.p95)}`;
+  }
+  if (config.kind === "mst") {
+    return row.value === "hubac" ? "Hubac stronger" : row.value === "rubac" ? "Rubac stronger" : "Mixed signal";
+  }
+  if (config.kind === "case") {
+    return row.site === "Knaresborough Lido" ? "Case site" : "River context";
+  }
+  return `${formatNumber(row.value, config.digits)} ${config.unit}`;
+}
+
+function buildMap(config) {
+  markerLayer.clearLayers();
+  makeLegend(config);
+  const maxMagnitude = config.kind === "delta"
+    ? Math.max(...config.rows.map((row) => Math.abs(row.value || 0)), 1)
+    : 1;
+  const labelOffsets = [
+    [22, -20],
+    [22, 20],
+    [-22, -20],
+    [-22, 20],
+    [0, -28],
+  ];
+
+  config.rows.forEach((row, index) => {
+    const location = locationsLatLng.find((item) => item.site === row.site);
+    if (config.kind === "case" && row.site === "Knaresborough Lido") {
+      L.circleMarker([location.lat, location.lng], {
+        radius: 32,
+        weight: 2,
+        color: "#7a5af8",
+        fillColor: "#7a5af8",
+        fillOpacity: 0.14,
+      }).addTo(markerLayer);
+    }
+    const radius = config.kind === "case"
+      ? (row.site === "Knaresborough Lido" ? 24 : 10)
+      : config.kind === "delta"
+        ? 12 + ((Math.abs(row.value || 0) / maxMagnitude) * 16)
+        : 18;
+    const marker = L.circleMarker([location.lat, location.lng], {
+      radius,
+      weight: config.kind === "case" && row.site === "Knaresborough Lido" ? 5 : 3,
+      color: config.kind === "case" && row.site === "Knaresborough Lido" ? "#f7f3e7" : "#ffffff",
+      fillColor: rowColor(row, config),
+      fillOpacity: config.kind === "case" && row.site !== "Knaresborough Lido" ? 0.55 : 0.92,
+    });
+    if (config.kind === "case" && row.site === "Knaresborough Lido") {
+      marker.getElement?.()?.classList?.add("case-highlight-ring");
+    }
+    marker.bindTooltip(`<strong>${index + 1}. ${row.site}</strong><br>${rowLabel(row, config)}`, {
+      direction: "top",
+      offset: [0, -6],
+    });
+    marker.addTo(markerLayer);
+
+    if (config.kind === "case" && row.site !== "Knaresborough Lido") {
+      return;
+    }
+
+    const [offsetX, offsetY] = labelOffsets[index % labelOffsets.length];
+    const label = L.marker([location.lat, location.lng], {
+      interactive: false,
+      icon: L.divIcon({
+        className: "site-rank-marker",
+        iconSize: [24, 24],
+        iconAnchor: [-offsetX, -offsetY],
+        html: `<div class="site-rank-chip">${index + 1}</div>`,
+      }),
+    });
+    label.addTo(markerLayer);
+  });
+}
+
+function dynamicFindings() {
+  if (state.mode === "standards") {
+    const classKey = state.indicator === "eColi" ? "eColiClass" : "ieClass";
+    const p95Key = state.indicator === "eColi" ? "eColiP95" : "ieP95";
+    const poorSites = data.analysis.standardsBySite.filter((row) => row[classKey] === "Poor");
+    const lido = data.analysis.standardsBySite.find((row) => row.site === "Knaresborough Lido");
+    return [
+      {
+        title: `Lido is ${lido[classKey]} for ${indicatorLabel()}`,
+        text: `${indicatorLabel()} 95th percentile at Lido is ${formatNumber(lido[p95Key])} cfu / 100ml.`,
+      },
+      {
+        title: `${poorSites.length} sites are poor for ${indicatorLabel()}`,
+        text: "This is based on inland-water thresholds from the bathing-water rating guide.",
+      },
+      {
+        title: "Percentiles matter more than means",
+        text: "Regulatory classes come from the 90th and 95th percentiles, not average bacterial concentration.",
+      },
+    ];
+  }
+
+  if (state.mode === "river") {
+    const meanKey = state.indicator === "eColi" ? "meanEColi" : "meanIE";
+    const hotspot = [...data.siteSummaries].sort((a, b) => (b[meanKey] || 0) - (a[meanKey] || 0))[0];
+    return [
+      {
+        title: `${hotspot.site} is the strongest hotspot`,
+        text: `It has the highest mean ${indicatorLabel()} in the filtered sample set.`,
+      },
+      {
+        title: "Downstream build-up is uneven",
+        text: "The map compares each site to the most upstream point to show where pollution intensifies, not just where raw values are high.",
+      },
+      {
+        title: "Distance alone is not enough",
+        text: "Some sites stay relatively close to upstream values while others diverge sharply.",
+      },
+    ];
+  }
+
+  if (state.mode === "drivers") {
+    const isSomeRain = state.rainfallCondition === "some";
+    const rows = state.driver === "rain" ? data.analysis.rainfallResponseBySite : data.analysis.riverLevelBySite;
+    const deltaKey = state.driver === "rain"
+      ? (
+        state.indicator === "eColi"
+          ? (isSomeRain ? "someRainDeltaEColi" : "highRainDeltaEColi")
+          : (isSomeRain ? "someRainDeltaIE" : "highRainDeltaIE")
+      )
+      : (state.indicator === "eColi" ? "highLowDeltaEColi" : "highLowDeltaIE");
+    const strongest = [...rows].sort((a, b) => (b[deltaKey] || 0) - (a[deltaKey] || 0))[0];
+    return [
+      {
+        title: `${strongest.site} reacts most strongly`,
+        text: `${indicatorLabel()} changes by ${formatNumber(strongest[deltaKey])} cfu / 100ml in this driver comparison.`,
+      },
+      {
+        title: state.driver === "rain" ? `${isSomeRain ? "Some rain" : "High rain"} is compared against dry baseline` : "River level uses a median split",
+        text: state.driver === "rain"
+          ? "This is a response view, not an official risk class or live swimming-safety flag. It shows the selected rainfall-condition mean minus the dry-condition mean."
+          : `Samples are split above and below the overall median river level of ${formatNumber(data.analysis.riverLevelThreshold, 2)}.`,
+      },
+      {
+        title: "Environmental pressure is site-specific",
+        text: "The same driver does not affect every site equally, which is why a spatial comparison matters.",
+      },
+    ];
+  }
+
+  if (state.mode === "case") {
+    return [
+      {
+        title: "Short-term risk can shift fast",
+        text: "The same bathing site can move from low to very high bacteria levels within a few weeks.",
+      },
+      {
+        title: "16 Sep is the key episode",
+        text: "Lido’s mid-September spike is the point where the one-site story becomes impossible to treat as stable background noise.",
+      },
+      {
+        title: "Map plus timeline",
+        text: "The map keeps Lido inside the full river context, while the charts below show the site-level sequence behind that episode.",
+      },
+    ];
+  }
+
+  return [
+    {
+      title: "MST varies along the river",
+      text: "Hubac and Rubac do not tell a single, uniform source story across all sites.",
+    },
+    {
+      title: "Source clues are conditional",
+      text: "The selected snapshot can lean toward one marker even when the site-average picture is more mixed.",
+    },
+    {
+      title: "Use MST as supporting evidence",
+      text: "It helps frame possible sources but should not be treated as conclusive attribution.",
+    },
+  ];
+}
+
+function renderFindings() {
+  findingsGrid.innerHTML = "";
+  dynamicFindings().forEach((finding) => {
+    const card = document.createElement("article");
+    card.className = "finding-card";
+    card.innerHTML = `<h3>${finding.title}</h3><p>${finding.text}</p>`;
+    findingsGrid.appendChild(card);
+  });
+}
+
+function renderCaseTimelineChart(root, series, axisLabel, className) {
+  const padding = { top: 24, right: 26, bottom: 48, left: 58 };
+  const width = 860;
+  const height = 280;
+  const values = series.map((row) => row.value).filter((value) => value !== null && value !== undefined);
+  const yMin = 0;
+  const yMax = Math.max(...values, 1);
+  const xStep = (width - padding.left - padding.right) / Math.max(series.length - 1, 1);
+  const scaleX = (index) => padding.left + index * xStep;
+  const scaleY = (value) => height - padding.bottom - ((value - yMin) / Math.max(yMax - yMin, 1)) * (height - padding.top - padding.bottom);
+
+  const grid = [];
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i += 1) {
+    const ratio = i / yTicks;
+    const y = height - padding.bottom - ratio * (height - padding.top - padding.bottom);
+    const value = yMin + ratio * (yMax - yMin);
+    grid.push(`<line class="scatter-grid" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" />`);
+    grid.push(`<text class="scatter-tick" x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${formatNumber(value)}</text>`);
+  }
+
+  series.forEach((row, index) => {
+    const x = scaleX(index);
+    grid.push(`<line class="scatter-grid" x1="${x}" y1="${padding.top}" x2="${x}" y2="${height - padding.bottom}" />`);
+    grid.push(`<text class="scatter-tick" x="${x}" y="${height - 20}" text-anchor="middle">${row.shortDate}</text>`);
+  });
+
+  const path = series
+    .map((row, index) => `${index === 0 ? "M" : "L"} ${scaleX(index)} ${scaleY(row.value || 0)}`)
+    .join(" ");
+
+  const points = series
+    .map((row, index) => {
+      const cx = scaleX(index);
+      const cy = scaleY(row.value || 0);
+      const pointClass = row.isEpisode ? "case-series-point episode" : "case-series-point";
+      return `<circle class="${pointClass}" cx="${cx}" cy="${cy}" r="${row.isEpisode ? 6 : 4.5}" fill="${row.color}">
+        <title>${row.label}: ${formatNumber(row.value)}${row.meta ? ` · ${row.meta}` : ""}</title>
+      </circle>`;
+    })
+    .join("");
+
+  root.innerHTML = `
+    ${grid.join("")}
+    <line class="scatter-axis" x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" />
+    <line class="scatter-axis" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" />
+    <text class="scatter-axis-label" x="${width / 2}" y="${height - 6}" text-anchor="middle">date</text>
+    <text class="scatter-axis-label" x="16" y="${height / 2}" text-anchor="middle" transform="rotate(-90 16 ${height / 2})">${axisLabel}</text>
+    <path class="${className}" d="${path}" />
+    ${points}
+  `;
+}
+
+function renderCaseMultiTimelineChart(root, seriesList, axisLabel) {
+  const padding = { top: 24, right: 26, bottom: 48, left: 58 };
+  const width = 860;
+  const height = 280;
+  const values = seriesList.flatMap((series) => series.rows.map((row) => row.value)).filter((value) => value !== null && value !== undefined);
+  const yMin = 0;
+  const yMax = Math.max(...values, 1);
+  const pointCount = Math.max(...seriesList.map((series) => series.rows.length), 1);
+  const xStep = (width - padding.left - padding.right) / Math.max(pointCount - 1, 1);
+  const scaleX = (index) => padding.left + index * xStep;
+  const scaleY = (value) => height - padding.bottom - ((value - yMin) / Math.max(yMax - yMin, 1)) * (height - padding.top - padding.bottom);
+
+  const grid = [];
+  const yTicks = 5;
+  for (let i = 0; i <= yTicks; i += 1) {
+    const ratio = i / yTicks;
+    const y = height - padding.bottom - ratio * (height - padding.top - padding.bottom);
+    const value = yMin + ratio * (yMax - yMin);
+    grid.push(`<line class="scatter-grid" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" />`);
+    grid.push(`<text class="scatter-tick" x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${formatNumber(value)}</text>`);
+  }
+
+  const axisRows = seriesList[0]?.rows ?? [];
+  axisRows.forEach((row, index) => {
+    const x = scaleX(index);
+    grid.push(`<line class="scatter-grid" x1="${x}" y1="${padding.top}" x2="${x}" y2="${height - padding.bottom}" />`);
+    grid.push(`<text class="scatter-tick" x="${x}" y="${height - 20}" text-anchor="middle">${row.shortDate}</text>`);
+  });
+
+  const paths = seriesList.map((series) => {
+    const path = series.rows
+      .map((row, index) => `${index === 0 ? "M" : "L"} ${scaleX(index)} ${scaleY(row.value || 0)}`)
+      .join(" ");
+    return `<path class="${series.className}" d="${path}" />`;
+  }).join("");
+
+  const points = seriesList.map((series) => series.rows
+    .map((row, index) => {
+      const cx = scaleX(index);
+      const cy = scaleY(row.value || 0);
+      const pointClass = row.isEpisode ? "case-series-point episode" : "case-series-point";
+      return `<circle class="${pointClass}" cx="${cx}" cy="${cy}" r="${row.isEpisode ? 6 : 4.5}" fill="${series.color}">
+        <title>${row.label}: ${formatNumber(row.value)}${row.meta ? ` · ${row.meta}` : ""}</title>
+      </circle>`;
+    })
+    .join("")).join("");
+
+  root.innerHTML = `
+    ${grid.join("")}
+    <line class="scatter-axis" x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" />
+    <line class="scatter-axis" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" />
+    <text class="scatter-axis-label" x="${width / 2}" y="${height - 6}" text-anchor="middle">date</text>
+    <text class="scatter-axis-label" x="16" y="${height / 2}" text-anchor="middle" transform="rotate(-90 16 ${height / 2})">${axisLabel}</text>
+    ${paths}
+    ${points}
+  `;
+}
+
+function renderOneScatterplot(root, rows, valueKey, axisLabel, rawKey, lines = []) {
+  const padding = { top: 24, right: 140, bottom: 48, left: 58 };
+  const width = 860;
+  const height = 280;
+  const yMin = Math.min(...rows.map((row) => row[valueKey]));
+  const yMax = Math.max(...rows.map((row) => row[valueKey]));
+  const sites = data.locations.map((location) => location.site);
+  const bandWidth = (width - padding.left - padding.right) / Math.max(sites.length, 1);
+  const scaleX = (site, indexWithinSite) => {
+    const siteIndex = sites.indexOf(site);
+    const center = padding.left + siteIndex * bandWidth + bandWidth / 2;
+    const offsets = [-22, -12, -4, 4, 12, 22];
+    const offset = offsets[indexWithinSite % offsets.length];
+    return center + offset;
+  };
+  const scaleY = (value) =>
+    height - padding.bottom - ((value - yMin) / (yMax - yMin || 1)) * (height - padding.top - padding.bottom);
+
+  const yTicks = 5;
+  const grid = [];
+  sites.forEach((site, siteIndex) => {
+    const x = padding.left + siteIndex * bandWidth + bandWidth / 2;
+    grid.push(`<line class="scatter-grid" x1="${x}" y1="${padding.top}" x2="${x}" y2="${height - padding.bottom}" />`);
+    grid.push(`<text class="scatter-tick" x="${x}" y="${height - 20}" text-anchor="middle">${site}</text>`);
+  });
+  for (let i = 0; i <= yTicks; i += 1) {
+    const ratio = i / yTicks;
+    const y = height - padding.bottom - ratio * (height - padding.top - padding.bottom);
+    const value = yMin + ratio * (yMax - yMin);
+    grid.push(`<line class="scatter-grid" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" />`);
+    grid.push(`<text class="scatter-tick" x="${padding.left - 10}" y="${y + 4}" text-anchor="end">${value.toFixed(1)}</text>`);
+  }
+
+  const bySite = new Map(sites.map((site) => [site, []]));
+  rows.forEach((row) => bySite.get(row.site).push(row));
+  const points = sites
+    .flatMap((site) => (bySite.get(site) || []).map((row, indexWithinSite) => {
+      const color = sitePalette[row.site] || "#23695a";
+      return `<circle cx="${scaleX(site, indexWithinSite)}" cy="${scaleY(row[valueKey])}" r="4.5" fill="${color}" fill-opacity="0.78">
+        <title>${row.site} · ${row.date} ${row.time}
+${axisLabel}: ${formatNumber(row[rawKey])}</title>
+      </circle>`;
+    }))
+    .join("");
+
+  const percentileMarkers = sites
+    .map((site, siteIndex) => {
+      const siteRows = bySite.get(site) || [];
+      const p90Raw = percentile(siteRows.map((row) => row[rawKey]), 0.9);
+      const p95Raw = percentile(siteRows.map((row) => row[rawKey]), 0.95);
+      const center = padding.left + siteIndex * bandWidth + bandWidth / 2;
+      const p90Log = p90Raw !== null ? Math.log10(p90Raw) : null;
+      const p95Log = p95Raw !== null ? Math.log10(p95Raw) : null;
+      const parts = [];
+      if (p90Log !== null) {
+        const y = scaleY(p90Log);
+        parts.push(`
+          <circle class="scatter-p90" cx="${center - 10}" cy="${y}" r="7">
+            <title>${site} p90: ${formatNumber(p90Raw)}</title>
+          </circle>
+          <text class="scatter-percentile-label" x="${center - 10}" y="${y + 4}" text-anchor="middle">90</text>
+        `);
+      }
+      if (p95Log !== null) {
+        const y = scaleY(p95Log);
+        parts.push(`
+          <rect class="scatter-p95" x="${center + 3}" y="${y - 7}" width="14" height="14" rx="2" ry="2">
+            <title>${site} p95: ${formatNumber(p95Raw)}</title>
+          </rect>
+          <text class="scatter-percentile-label" x="${center + 10}" y="${y + 4}" text-anchor="middle" fill="#ffffff">95</text>
+        `);
+      }
+      return parts.join("");
+    })
+    .join("");
+
+  const lineMarkup = lines
+    .map((line) => {
+      const y = scaleY(line.value);
+      const x = line.labelX ?? (width - padding.right);
+      const anchor = line.anchor ?? "end";
+      const dy = line.dy ?? -8;
+      return `
+        <line class="${line.className}" x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" />
+        <text class="${line.labelClassName}" x="${x}" y="${y + dy}" text-anchor="${anchor}">${line.label}</text>
+      `;
+    })
+    .join("");
+
+  root.innerHTML = `
+    ${grid.join("")}
+    <line class="scatter-axis" x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" />
+    <line class="scatter-axis" x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" />
+    <text class="scatter-axis-label" x="${width / 2}" y="${height - 6}" text-anchor="middle">site</text>
+    <text class="scatter-axis-label" x="16" y="${height / 2}" text-anchor="middle" transform="rotate(-90 16 ${height / 2})">${axisLabel}</text>
+    ${lineMarkup}
+    ${points}
+    ${percentileMarkers}
+  `;
+}
+
+function renderScatterplot() {
+  if (state.mode === "case") {
+    const rows = data.analysis.lidoCaseTimeline.map((row) => {
+      const [day, month] = row.date.split("/");
+      return {
+        ...row,
+        shortDate: `${day}/${month}`,
+        isEpisode: row.date === "16/09/2025",
+      };
+    });
+    const ecoliSeries = rows.map((row) => ({
+      shortDate: row.shortDate,
+      value: row.eColi,
+      label: `${row.date} E. coli`,
+      meta: `${row.sampleType.toLowerCase()}`,
+      isEpisode: row.isEpisode,
+    }));
+    const ieSeries = rows.map((row) => ({
+      shortDate: row.shortDate,
+      value: row.ie,
+      label: `${row.date} IE`,
+      meta: `${row.sampleType.toLowerCase()}`,
+      isEpisode: row.isEpisode,
+    }));
+    const rainSeries = rows.map((row) => ({
+      shortDate: row.shortDate,
+      value: row.rain72h,
+      color: "#23695a",
+      label: `${row.date} 3-day rainfall`,
+      meta: `${formatNumber(row.rain72h, 2)} mm`,
+      isEpisode: row.isEpisode,
+    }));
+    subchartKicker.textContent = "Site snapshot";
+    subchartTitle.textContent = "Knaresborough Lido bacteria and rainfall through Aug-Sep";
+    scatterLegendRoot.innerHTML = `
+      <section class="scatter-legend-group">
+        <p class="scatter-legend-title">Case series</p>
+        <div class="scatter-legend-items">
+          <div class="legend-item"><span class="legend-swatch" style="background:#d67f33"></span><span>E. coli daily mean</span></div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#2f6f97"></span><span>IE daily mean</span></div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#23695a"></span><span>3-day rainfall</span></div>
+          <div class="legend-item"><span class="legend-swatch legend-swatch-square"></span><span>16 Sep episode</span></div>
+        </div>
+      </section>
+    `;
+    renderCaseMultiTimelineChart(
+      ecoliScatterRoot,
+      [
+        { rows: ecoliSeries, className: "case-series-ecoli", color: "#d67f33" },
+        { rows: ieSeries, className: "case-series-ie", color: "#2f6f97" },
+      ],
+      "daily mean concentration",
+    );
+    renderCaseTimelineChart(
+      ieScatterRoot,
+      rainSeries,
+      "3-day rainfall (mm)",
+      "case-series-rain",
+    );
+    scatterNote.textContent =
+      "This focus view uses the fuller Lido sample record for August and September 2025. E. coli and IE are shown together so the one-site episode can be compared across both bacteria indicators, alongside 3-day rainfall.";
+    return;
+  }
+
+  subchartKicker.textContent = "Bacteria relationship";
+  subchartTitle.textContent = "Separate bacteria scatterplots";
+  const ecoliRows = data.samples.filter((row) => row.logEColi !== null);
+  const ieRows = data.samples.filter((row) => row.logIE !== null);
+  renderOneScatterplot(ecoliScatterRoot, ecoliRows, "logEColi", "log10 E. coli capped", "eColi", [
+    {
+      value: Math.log10(1000),
+      label: "good lg1000",
+      className: "scatter-good-line",
+      labelClassName: "scatter-good-label",
+      labelX: 736,
+      anchor: "start",
+      dy: -8,
+    },
+    {
+      value: Math.log10(900),
+      label: "sufficient lg900",
+      className: "scatter-sufficient-line",
+      labelClassName: "scatter-sufficient-label",
+      labelX: 736,
+      anchor: "start",
+      dy: 16,
+    },
+  ]);
+  renderOneScatterplot(ieScatterRoot, ieRows, "logIE", "log10 IE capped", "ie", [
+    {
+      value: Math.log10(400),
+      label: "good lg400",
+      className: "scatter-good-line",
+      labelClassName: "scatter-good-label",
+      labelX: 736,
+      anchor: "start",
+      dy: -8,
+    },
+    {
+      value: Math.log10(330),
+      label: "sufficient lg330",
+      className: "scatter-sufficient-line",
+      labelClassName: "scatter-sufficient-label",
+      labelX: 736,
+      anchor: "start",
+      dy: 16,
+    },
+  ]);
+
+  scatterLegendRoot.innerHTML = "";
+  const percentileItems = [
+    { label: "90th percentile", swatchClass: "legend-swatch-outline" },
+    { label: "95th percentile", swatchClass: "legend-swatch-square" },
+  ];
+  const thresholdItems = [
+    { label: "Good threshold", swatchClass: "legend-line-good" },
+    { label: "Sufficient threshold", swatchClass: "legend-line-sufficient" },
+  ];
+  const siteItems = data.locations.map((location) => ({
+    label: location.site,
+    style: `background:${sitePalette[location.site] || "#23695a"}`,
+  }));
+
+  const renderItems = (items) => items.map((item) => {
+    const swatch = item.swatchClass
+      ? `<span class="legend-swatch ${item.swatchClass}"></span>`
+      : `<span class="legend-swatch" style="${item.style}"></span>`;
+    return `<div class="legend-item">${swatch}<span>${item.label}</span></div>`;
+  }).join("");
+
+  scatterLegendRoot.innerHTML = `
+    <section class="scatter-legend-group">
+      <p class="scatter-legend-title">Percentiles</p>
+      <div class="scatter-legend-items">${renderItems(percentileItems)}</div>
+    </section>
+    <section class="scatter-legend-group">
+      <p class="scatter-legend-title">Thresholds</p>
+      <div class="scatter-legend-items">${renderItems(thresholdItems)}</div>
+    </section>
+    <section class="scatter-legend-group">
+      <p class="scatter-legend-title">Sites</p>
+      <div class="scatter-legend-items">${renderItems(siteItems)}</div>
+    </section>
+  `;
+
+  scatterNote.textContent =
+    "Each dot is one cleaned bacteria sample. Hollow markers show each site's 90th percentile and solid square markers show its 95th percentile. Both charts now use the same threshold colours: blue for the good line and orange for the sufficient line.";
+}
+
+function renderStats(config) {
+  let stats = [];
+  if (config.kind === "classification") {
+    const classKey = state.indicator === "eColi" ? "eColiClass" : "ieClass";
+    const p90Key = state.indicator === "eColi" ? "eColiP90" : "ieP90";
+    const p95Key = state.indicator === "eColi" ? "eColiP95" : "ieP95";
+    const lido = data.analysis.standardsBySite.find((row) => row.site === "Knaresborough Lido");
+    stats = [
+      { label: "Lido class", value: lido[classKey] },
+      { label: "Lido 90th percentile", value: `${formatNumber(lido[p90Key])} cfu / 100ml` },
+      { label: "Lido 95th percentile", value: `${formatNumber(lido[p95Key])} cfu / 100ml` },
+      { label: "Sites compared", value: formatNumber(config.rows.length) },
+    ];
+  } else if (state.mode === "river") {
+    const meanKey = state.indicator === "eColi" ? "meanEColi" : "meanIE";
+    const deltaKey = state.indicator === "eColi" ? "deltaFromUpstreamEColi" : "deltaFromUpstreamIE";
+    const hotspot = [...data.siteSummaries].sort((a, b) => (b[meanKey] || 0) - (a[meanKey] || 0))[0];
+    const lido = data.analysis.spatialGradient.find((row) => row.site === "Knaresborough Lido");
+    stats = [
+      { label: `Highest mean ${indicatorLabel()}`, value: hotspot.site },
+      { label: `Hotspot mean ${indicatorLabel()}`, value: `${formatNumber(hotspot[meanKey])} cfu / 100ml` },
+      { label: "Lido minus upstream", value: `${formatNumber(lido[deltaKey])} cfu / 100ml` },
+      { label: "Sites compared", value: formatNumber(config.rows.length) },
+    ];
+  } else if (state.mode === "drivers") {
+    const isSomeRain = state.rainfallCondition === "some";
+    const deltaKey = state.driver === "rain"
+      ? (
+        state.indicator === "eColi"
+          ? (isSomeRain ? "someRainDeltaEColi" : "highRainDeltaEColi")
+          : (isSomeRain ? "someRainDeltaIE" : "highRainDeltaIE")
+      )
+      : (state.indicator === "eColi" ? "highLowDeltaEColi" : "highLowDeltaIE");
+    const rows = state.driver === "rain" ? data.analysis.rainfallResponseBySite : data.analysis.riverLevelBySite;
+    const strongest = [...rows].sort((a, b) => (b[deltaKey] || 0) - (a[deltaKey] || 0))[0];
+    stats = [
+      { label: state.driver === "rain" ? "Strongest rain response" : "Strongest level response", value: strongest.site },
+      { label: "Delta", value: `${formatNumber(strongest[deltaKey])} cfu / 100ml` },
+      { label: state.driver === "rain" ? "Dry samples" : "Low-level samples", value: formatNumber(state.driver === "rain" ? strongest.dryCount : strongest.lowLevelCount) },
+      { label: state.driver === "rain" ? `${isSomeRain ? "Some-rain" : "High-rain"} samples` : "High-level samples", value: formatNumber(state.driver === "rain" ? (isSomeRain ? strongest.someRainCount : strongest.highRainCount) : strongest.highLevelCount) },
+    ];
+  } else if (state.mode === "case") {
+    const compare20Aug = data.analysis.lidoCaseCompare["20/08/2025"];
+    const compare16Sep = data.analysis.lidoCaseCompare["16/09/2025"];
+    const ecoliDelta = compare20Aug && compare16Sep ? compare16Sep.eColi - compare20Aug.eColi : null;
+    const ieDelta = compare20Aug && compare16Sep ? compare16Sep.ie - compare20Aug.ie : null;
+    stats = [
+      { label: "E. coli change", value: `${formatNumber(ecoliDelta)} cfu / 100ml` },
+      { label: "IE change", value: `${formatNumber(ieDelta)} cfu / 100ml` },
+    ];
+  } else {
+    const hubacCount = data.analysis.mstBySite.filter((row) => row.dominantMarker === "hubac").length;
+    const rubacCount = data.analysis.mstBySite.filter((row) => row.dominantMarker === "rubac").length;
+    stats = [
+      { label: "Hubac-leaning sites", value: formatNumber(hubacCount) },
+      { label: "Rubac-leaning sites", value: formatNumber(rubacCount) },
+      { label: "Snapshots available", value: formatNumber(data.mstSnapshots.length) },
+      { label: "MST samples used", value: formatNumber(data.mstSamples.length) },
+    ];
+  }
+
+  statsRoot.innerHTML = "";
+  stats.forEach((stat) => {
+    const card = document.createElement("article");
+    card.className = "stat-card";
+    if (state.mode === "drivers" && stat.label.includes("Strongest")) {
+      card.classList.add("stat-card-compact-value");
+    }
+    card.innerHTML = `<strong>${stat.value}</strong><span>${stat.label}</span>`;
+    statsRoot.appendChild(card);
+  });
+}
+
+function renderSiteBars(config) {
+  siteBars.innerHTML = "";
+  if (config.kind === "classification") {
+    config.rows.forEach((row) => {
+      const card = document.createElement("article");
+      card.className = "classification-row";
+      card.innerHTML = `
+        <header>
+          <strong>${row.site}</strong>
+          <span class="classification-badge">
+            <span class="legend-swatch" style="background:${rowColor(row, config)}"></span>
+            ${row.value}
+          </span>
+        </header>
+        <div class="classification-meta">
+          <div class="classification-metric">
+            <strong>90th percentile</strong>
+            <span>${formatNumber(row.p90)} cfu / 100ml</span>
+          </div>
+          <div class="classification-metric">
+            <strong>95th percentile</strong>
+            <span>${formatNumber(row.p95)} cfu / 100ml</span>
+          </div>
+        </div>
+      `;
+      siteBars.appendChild(card);
+    });
+    return;
+  }
+  if (config.kind === "case") {
+    const compare20Aug = data.analysis.lidoCaseCompare["20/08/2025"];
+    const compare16Sep = data.analysis.lidoCaseCompare["16/09/2025"];
+    const caseRows = [
+      { label: "20 Aug E. coli", value: compare20Aug?.eColi, color: "#d67f33" },
+      { label: "16 Sep E. coli", value: compare16Sep?.eColi, color: "#d67f33" },
+      { label: "20 Aug IE", value: compare20Aug?.ie, color: "#2f6f97" },
+      { label: "16 Sep IE", value: compare16Sep?.ie, color: "#2f6f97" },
+    ];
+    const maxValue = Math.max(...caseRows.map((row) => row.value || 0), 1);
+    caseRows.forEach((row) => {
+      const width = ((row.value || 0) / maxValue) * 100;
+      const card = document.createElement("article");
+      card.className = "bar-row";
+      card.innerHTML = `
+        <header>
+          <strong>${row.label}</strong>
+          <span>${formatNumber(row.value)} cfu / 100ml</span>
+        </header>
+        <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${row.color}"></div></div>
+      `;
+      siteBars.appendChild(card);
+    });
+    return;
+  }
+  const maxMagnitude = config.kind === "delta"
+    ? Math.max(...config.rows.map((row) => Math.abs(row.value || 0)), 1)
+    : 1;
+
+  config.rows.forEach((row) => {
+    const width = config.kind === "delta" ? (Math.abs(row.value || 0) / maxMagnitude) * 100 : 100;
+    const card = document.createElement("article");
+    card.className = "bar-row";
+    card.innerHTML = `
+      <header>
+        <strong>${row.site}</strong>
+        <span>${rowLabel(row, config)}</span>
+      </header>
+      <div class="bar-track"><div class="bar-fill" style="width:${width}%;background:${rowColor(row, config)}"></div></div>
+    `;
+    siteBars.appendChild(card);
+  });
+}
+
+function supportingCards(config) {
+  if (config.kind === "classification") {
+    const thresholds = data.analysis.standards[state.indicator];
+    return [
+      {
+        title: "Threshold rule",
+        meta: "Inland waters",
+        body: `Excellent uses 95th percentile <= ${thresholds.excellent95}, Good uses 95th percentile <= ${thresholds.good95}, and Sufficient uses 90th percentile <= ${thresholds.sufficient90}.`,
+      },
+      {
+        title: "Why this matters",
+        meta: "Regulatory framing",
+        body: "This mode is closer to the bathing-water assessment logic than a mean-only summary, so it should be the anchor view in your final story.",
+      },
+    ];
+  }
+
+  if (state.mode === "river") {
+    return [
+      {
+        title: "Spatial build-up",
+        meta: "Relative comparison",
+        body: "Relative-to-upstream values show where bacterial levels intensify downstream, rather than just where a site has a large absolute value.",
+      },
+      {
+        title: "Standards context",
+        meta: "Not classification yet",
+        body: "A downstream increase does not automatically mean the site fails a bathing-water standard, so this view should be read with the standards mode above.",
+      },
+    ];
+  }
+
+  if (state.mode === "drivers") {
+    if (state.driver === "rain") {
+      const isSomeRain = state.rainfallCondition === "some";
+      const lido = data.analysis.rainfallResponseBySite.find((row) => row.site === "Knaresborough Lido");
+      const lowKey = state.indicator === "eColi" ? "dryMeanEColi" : "dryMeanIE";
+      const highKey = state.indicator === "eColi"
+        ? (isSomeRain ? "someRainMeanEColi" : "highRainMeanEColi")
+        : (isSomeRain ? "someRainMeanIE" : "highRainMeanIE");
+      return [
+        {
+          title: `Lido ${isSomeRain ? "some-rain" : "high-rain"} response`,
+          meta: "Dry baseline versus selected rain condition",
+          body: `At Lido, mean ${indicatorLabel()} rises from ${formatNumber(lido[lowKey])} to ${formatNumber(lido[highKey])} cfu / 100ml under the selected rainfall condition.`,
+        },
+        {
+          title: "Rainfall field used",
+          meta: "Automatic field lookup",
+          body: "This page tries Rainfall.3_day_sum_mm, rainfall.3_day_sum_mm, then Rainfall_72h_sum_mm, and uses the first one it finds.",
+        },
+      ];
+    }
+
+    const lido = data.analysis.riverLevelBySite.find((row) => row.site === "Knaresborough Lido");
+    const lowKey = state.indicator === "eColi" ? "lowMeanEColi" : "lowMeanIE";
+    const highKey = state.indicator === "eColi" ? "highMeanEColi" : "highMeanIE";
+    return [
+      {
+        title: "River-level threshold",
+        meta: "Median split",
+        body: `Samples are split above and below the median river level of ${formatNumber(data.analysis.riverLevelThreshold, 2)}.`,
+      },
+      {
+        title: "Lido level response",
+        meta: "Low versus high level",
+        body: `At Lido, mean ${indicatorLabel()} rises from ${formatNumber(lido[lowKey])} to ${formatNumber(lido[highKey])} cfu / 100ml when river level moves above the median threshold.`,
+      },
+    ];
+  }
+
+  if (state.mode === "case") {
+    const compare20Aug = data.analysis.lidoCaseCompare["20/08/2025"];
+    const compare16Sep = data.analysis.lidoCaseCompare["16/09/2025"];
+    const ecoliDelta = compare20Aug && compare16Sep ? compare16Sep.eColi - compare20Aug.eColi : null;
+    const ieDelta = compare20Aug && compare16Sep ? compare16Sep.ie - compare20Aug.ie : null;
+    return [
+      {
+        title: "Short-term shift",
+        meta: "Same site, different day",
+        body: `At Lido, E. coli rises from ${formatNumber(compare20Aug?.eColi)} to ${formatNumber(compare16Sep?.eColi)}, while IE rises from ${formatNumber(compare20Aug?.ie)} to ${formatNumber(compare16Sep?.ie)}.`,
+      },
+      {
+        title: "Takeaway",
+        meta: "Core message",
+        body: `Short-term risk can shift fast, even at one site. In this case the change is ${formatNumber(ecoliDelta)} cfu / 100ml for E. coli and ${formatNumber(ieDelta)} for IE.`,
+      },
+    ];
+  }
+
+  const snapshot = config.snapshot;
+  return [
+    {
+      title: "Snapshot focus",
+      meta: snapshot ? snapshot.date : "No date",
+      body: snapshot
+        ? snapshot.dominantMarker === "mixed"
+          ? "In this snapshot, Hubac and Rubac are close overall, so the source signal is mixed."
+          : `${snapshot.dominantMarker === "hubac" ? "Hubac" : "Rubac"} is stronger on average in the selected snapshot.`
+        : "No MST snapshot selected.",
+    },
+    {
+      title: "Interpretation rule",
+      meta: "Supporting evidence only",
+      body: "MST patterns help frame possible sources, but they should be read alongside standards and bacteria levels rather than treated as conclusive attribution.",
+    },
+  ];
+}
+
+function renderSupportingEvidence(config) {
+  supportingEvidence.innerHTML = "";
+  supportingCards(config).forEach((item) => {
+    const card = document.createElement("article");
+    card.className = "bucket-card";
+    card.innerHTML = `<strong>${item.title}</strong><span>${item.meta}</span><p>${item.body}</p>`;
+    supportingEvidence.appendChild(card);
+  });
+}
+
+function renderLidoCaseSnapshot() {
+  lidoCaseWrap.style.display = "none";
+  lidoCaseSnapshot.innerHTML = "";
+}
+
+function renderNarrative(config) {
+  modeTitle.textContent = config.title;
+  modeSummary.textContent = config.summary;
+  mapTitle.textContent = config.mapTitle;
+  selectionTitle.textContent = config.title;
+
+  if (config.kind === "classification") {
+    const lido = data.analysis.standardsBySite.find((row) => row.site === "Knaresborough Lido");
+    const classKey = state.indicator === "eColi" ? "eColiClass" : "ieClass";
+    const p90Key = state.indicator === "eColi" ? "eColiP90" : "ieP90";
+    const p95Key = state.indicator === "eColi" ? "eColiP95" : "ieP95";
+    selectionSummary.textContent = `For ${indicatorLabel()}, Lido is classed as ${lido[classKey]}. Its 90th percentile is ${formatNumber(lido[p90Key])} and its 95th percentile is ${formatNumber(lido[p95Key])}, which lets you compare the site directly against the bathing-water standard in the scoring guide.`;
+    return;
+  }
+
+  if (state.mode === "river") {
+    const meanKey = state.indicator === "eColi" ? "meanEColi" : "meanIE";
+    const deltaKey = state.indicator === "eColi" ? "deltaFromUpstreamEColi" : "deltaFromUpstreamIE";
+    const lido = data.analysis.spatialGradient.find((row) => row.site === "Knaresborough Lido");
+    const hotspot = [...data.siteSummaries].sort((a, b) => (b[meanKey] || 0) - (a[meanKey] || 0))[0];
+    selectionSummary.textContent = `${hotspot.site} has the highest average ${indicatorLabel()} overall, while Lido sits ${formatNumber(lido[deltaKey])} cfu / 100ml above the most upstream site. This helps distinguish persistent hotspots from simple downstream distance.`;
+    return;
+  }
+
+  if (state.mode === "drivers") {
+    const isSomeRain = state.rainfallCondition === "some";
+    const deltaKey = state.driver === "rain"
+      ? (
+        state.indicator === "eColi"
+          ? (isSomeRain ? "someRainDeltaEColi" : "highRainDeltaEColi")
+          : (isSomeRain ? "someRainDeltaIE" : "highRainDeltaIE")
+      )
+      : (state.indicator === "eColi" ? "highLowDeltaEColi" : "highLowDeltaIE");
+    const rows = state.driver === "rain" ? data.analysis.rainfallResponseBySite : data.analysis.riverLevelBySite;
+    const strongest = [...rows].sort((a, b) => (b[deltaKey] || 0) - (a[deltaKey] || 0))[0];
+    selectionSummary.textContent = state.driver === "rain"
+      ? `${strongest.site} has the strongest ${isSomeRain ? "some-rain" : "high-rain"} jump in ${indicatorLabel()}, increasing by ${formatNumber(strongest[deltaKey])} cfu / 100ml relative to the dry baseline.`
+      : `${strongest.site} shows the strongest high-water response, with mean ${indicatorLabel()} ${formatNumber(strongest[deltaKey])} cfu / 100ml higher when river level is above the median threshold of ${formatNumber(data.analysis.riverLevelThreshold, 2)}.`;
+    return;
+  }
+
+  if (state.mode === "case") {
+    selectionSummary.textContent = "The river map keeps Knaresborough Lido inside the full corridor context, but the charts below narrow the evidence to one site. The key point is that short-term bacteria conditions can change very quickly even without moving to a different bathing location.";
+    return;
+  }
+
+  selectionSummary.textContent = "Hubac and Rubac patterns vary by site, so the source signal is not uniform along the river. The map is designed to show where one marker leans stronger while keeping uncertainty visible.";
+}
+
+function updateControlVisibility(config) {
+  const isMst = config.kind === "mst";
+  const showDriver = state.mode === "drivers";
+  const showRainfallCondition = state.mode === "drivers" && state.driver === "rain";
+  const isCase = state.mode === "case";
+  metricSwitchWrap.style.display = isMst || isCase ? "none" : "block";
+  driverSwitchWrap.style.display = showDriver ? "block" : "none";
+  rainfallConditionWrap.style.display = showRainfallCondition ? "block" : "none";
+  mstSelectWrap.style.display = isMst ? "block" : "none";
+  if (isMst) {
+    const snapshot = config.snapshot;
+    mstSnapshotCopy.textContent = snapshot
+      ? `Selected snapshot: ${snapshot.date}. Mean Hubac ${formatNumber(snapshot.meanHubac, 1)} and mean Rubac ${formatNumber(snapshot.meanRubac, 1)} across ${snapshot.siteCount} sites.`
+      : "";
+  }
+}
+
+function render() {
+  const config = modeConfig();
+  if (config.kind === "delta") {
+    const values = config.rows.map((row) => row.value).filter((value) => value !== null && value !== undefined);
+    config.min = Math.min(...values);
+    config.max = Math.max(...values);
+  }
+  renderFindings();
+  buildMap(config);
+  renderStats(config);
+  renderSiteBars(config);
+  renderSupportingEvidence(config);
+  renderLidoCaseSnapshot();
+  renderNarrative(config);
+  updateControlVisibility(config);
+  renderScatterplot();
+}
+
+render();
+
+</script>
+  </body>
+</html>
