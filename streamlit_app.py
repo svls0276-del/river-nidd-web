@@ -70,6 +70,15 @@ def indicator_label(indicator: str) -> str:
     return "E. coli" if indicator == "eColi" else "IE"
 
 
+def audience_class_label(value: str) -> str:
+    return {
+        "Excellent": "lowest threshold risk in this dataset",
+        "Good": "within the good threshold band",
+        "Sufficient": "within the sufficient threshold band",
+        "Poor": "above the bathing water threshold",
+    }.get(value, value)
+
+
 def format_unit_value(value, unit: str = "", digits: int = 1) -> str:
     if value is None or pd.isna(value):
         return "n/a"
@@ -328,7 +337,7 @@ def render():
         st.header("Controls")
         mode = st.radio(
             "Analysis mode",
-            ["Standards", "Along the river", "Environmental drivers", "Case snapshot", "Source clues"],
+            ["Thresholds", "Along the river", "Environmental drivers", "Location snapshot", "Source clues"],
         )
         indicator = st.radio("Bacteria indicator", ["E. coli", "IE"], horizontal=True)
         indicator_key = "eColi" if indicator == "E. coli" else "ie"
@@ -345,7 +354,7 @@ def render():
 
         st.subheader("Method")
         for line in [
-            "Standards mode uses inland bathing-water thresholds from the provided guide.",
+            "Thresholds mode uses inland bathing-water thresholds from the provided guide.",
             "Sufficient uses the 90th percentile; Good and Excellent use the 95th percentile.",
             f"Only samples on or after {payload['story']['dateCutoff']} are included.",
             "Rainfall response uses the first available 3-day rainfall field.",
@@ -355,11 +364,11 @@ def render():
     left, right = st.columns([1.55, 1])
 
     with left:
-        if mode == "Standards":
+        if mode == "Thresholds":
             field = "eColiClass" if indicator_key == "eColi" else "ieClass"
             p95 = "eColiP95" if indicator_key == "eColi" else "ieP95"
             merged = merge_map_df(locations, standards.rename(columns={field: "value"}), "value")
-            fmap = make_map(locations, f"{indicator} against inland bathing-water standards")
+            fmap = make_map(locations, f"{indicator} against bathing water thresholds")
             add_categorical_map(fmap, merged.rename(columns={"value": field}), field, CLASS_PALETTE)
             st_folium(fmap, use_container_width=True, height=470)
             standards_scatter(samples, site_order)
@@ -428,10 +437,10 @@ def render():
                     f"Bars show mean {indicator} under higher river level minus lower river level conditions.",
                 )
 
-        elif mode == "Case snapshot":
+        elif mode == "Location snapshot":
             case_df = pd.DataFrame({"site": site_order, "focus": ["Case site" if site == "Knaresborough Lido" else "Context site" for site in site_order]})
             merged = merge_map_df(locations, case_df, "focus")
-            fmap = make_map(locations, "Case snapshot: River Nidd context with Knaresborough Lido highlighted")
+            fmap = make_map(locations, "Location snapshot: Knaresborough Lido in River Nidd context")
             add_categorical_map(fmap, merged, "focus", {"Case site": "#d67f33", "Context site": "#8fa2a0"}, highlight_site="Knaresborough Lido")
             st_folium(fmap, use_container_width=True, height=470)
             case_charts(lido_case)
@@ -461,16 +470,23 @@ def render():
 
     with right:
         st.subheader("Supporting summary")
-        if mode == "Standards":
+        if mode == "Thresholds":
             row = standards.loc[standards["site"] == "Knaresborough Lido"].iloc[0]
-            st.metric("Lido class", f"{row['eColiClass']} / {row['ieClass']}")
+            st.metric("Lido threshold status", audience_class_label(row["eColiClass"]) if indicator_key == "eColi" else audience_class_label(row["ieClass"]))
             st.metric(
                 f"{indicator} 95th percentile at Lido",
                 format_unit_value(row["eColiP95"] if indicator_key == "eColi" else row["ieP95"], "cfu / 100 ml", 0),
             )
             standards_table = standards[["site", "eColiClass", "ieClass", "eColiP95", "ieP95"]].rename(
-                columns={"eColiP95": "E. coli p95 (cfu / 100 ml)", "ieP95": "IE p95 (cfu / 100 ml)"}
+                columns={
+                    "eColiClass": "E. coli threshold status",
+                    "ieClass": "IE threshold status",
+                    "eColiP95": "E. coli p95 (cfu / 100 ml)",
+                    "ieP95": "IE p95 (cfu / 100 ml)",
+                }
             )
+            standards_table["E. coli threshold status"] = standards_table["E. coli threshold status"].map(audience_class_label)
+            standards_table["IE threshold status"] = standards_table["IE threshold status"].map(audience_class_label)
             st.dataframe(standards_table, use_container_width=True, hide_index=True)
 
         elif mode == "Along the river":
@@ -519,7 +535,7 @@ def render():
                 )
                 st.dataframe(level_table, use_container_width=True, hide_index=True)
 
-        elif mode == "Case snapshot":
+        elif mode == "Location snapshot":
             compare = payload["analysis"]["lidoCaseCompare"]
             ecoli_delta = compare["16/09/2025"]["eColi"] - compare["20/08/2025"]["eColi"]
             ie_delta = compare["16/09/2025"]["ie"] - compare["20/08/2025"]["ie"]
