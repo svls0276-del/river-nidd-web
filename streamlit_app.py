@@ -204,7 +204,7 @@ def add_categorical_map(fmap: folium.Map, merged: pd.DataFrame, field: str, pale
         for label, color in palette.items()
     )
     legend_html = (
-        "<div style='position: fixed; bottom: 28px; left: 28px; z-index: 9999; "
+        "<div style='position: fixed; bottom: 28px; right: 28px; z-index: 9999; "
         "background: rgba(255,255,255,0.94); border: 1px solid #cfc7ba; border-radius: 10px; "
         "padding: 10px 12px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.12);'>"
         "<div style='font-weight:700;margin-bottom:6px;'>Legend</div>"
