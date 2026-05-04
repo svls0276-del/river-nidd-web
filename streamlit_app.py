@@ -70,6 +70,16 @@ def indicator_label(indicator: str) -> str:
     return "E. coli" if indicator == "eColi" else "IE"
 
 
+def format_unit_value(value, unit: str = "", digits: int = 1) -> str:
+    if value is None or pd.isna(value):
+        return "n/a"
+    if isinstance(value, (int, np.integer)) and digits == 0:
+        text = f"{int(value)}"
+    else:
+        text = f"{float(value):.{digits}f}"
+    return f"{text} {unit}".strip()
+
+
 def merge_map_df(locations: pd.DataFrame, frame: pd.DataFrame, field: str) -> pd.DataFrame:
     return locations.merge(frame[["site", field]], left_on="site", right_on="site", how="left")
 
@@ -177,7 +187,8 @@ def add_continuous_map(fmap: folium.Map, merged: pd.DataFrame, field: str, diver
     for number, row in enumerate(merged.sort_values("y", ascending=False).to_dict("records"), start=1):
         value = row[field]
         color = "#adb9b1" if pd.isna(value) else cmap(value)
-        shown = "n/a" if pd.isna(value) else f"{float(value):.1f}"
+        unit = "cfu / 100 ml" if ("EColi" in field or "IE" in field or "eColi" in field or field.endswith("ie")) else "mm"
+        shown = "n/a" if pd.isna(value) else format_unit_value(value, unit)
         folium.CircleMarker(
             location=[row["lat"], row["lon"]],
             radius=11 if row["site"] == highlight_site else 9,
@@ -201,17 +212,19 @@ def add_continuous_map(fmap: folium.Map, merged: pd.DataFrame, field: str, diver
     cmap.add_to(fmap)
 
 
-def hbar(frame: pd.DataFrame, label_col: str, value_col: str, title: str, color: str):
+def hbar(frame: pd.DataFrame, label_col: str, value_col: str, title: str, color: str, unit_label: str, note: str):
     fig, ax = plt.subplots(figsize=(7, 3.6))
     ordered = frame.sort_values(value_col)
     ax.barh(ordered[label_col], ordered[value_col], color=color)
     ax.set_title(title)
     ax.axvline(0, color="#222222", linewidth=1)
+    ax.set_xlabel(unit_label)
     ax.grid(axis="x", linestyle="--", alpha=0.25)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
+    st.caption(note)
 
 
 def standards_scatter(samples: pd.DataFrame, site_order: list[str]):
@@ -262,19 +275,24 @@ def line_and_bar_river(spatial: pd.DataFrame):
 
 def case_charts(lido_case: pd.DataFrame):
     fig, axes = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    peak_idx = lido_case[["eColi", "ie"]].max(axis=1).idxmax()
+    peak_date = lido_case.loc[peak_idx, "date_dt"]
     axes[0].plot(lido_case["date_dt"], lido_case["eColi"], color="#d67f33", marker="o", linewidth=2.2, label="E. coli daily mean")
     axes[0].plot(lido_case["date_dt"], lido_case["ie"], color="#2f6f97", marker="o", linewidth=2.2, label="IE daily mean")
     episode = lido_case.loc[lido_case["date"] == "16/09/2025"]
     if not episode.empty:
         axes[0].scatter(episode["date_dt"], episode["eColi"], s=110, marker="s", color="#d67f33", edgecolor="white", zorder=5)
         axes[0].scatter(episode["date_dt"], episode["ie"], s=110, marker="s", color="#2f6f97", edgecolor="white", zorder=5)
+    axes[0].axvline(peak_date, color="#c62828", linestyle="--", linewidth=1.8, label="Peak day")
     axes[0].set_title("Knaresborough Lido daily mean bacteria, Aug-Sep 2025")
+    axes[0].set_ylabel("Concentration (cfu / 100 ml)")
     axes[0].grid(alpha=0.25, linestyle="--")
     axes[0].legend(loc="upper left")
 
     axes[1].plot(lido_case["date_dt"], lido_case["rain72h"], color="#23695a", marker="o", linewidth=2.2)
     if not episode.empty:
         axes[1].scatter(episode["date_dt"], episode["rain72h"], s=110, marker="s", color="#23695a", edgecolor="white", zorder=5)
+    axes[1].axvline(peak_date, color="#c62828", linestyle="--", linewidth=1.8)
     axes[1].set_title("3-day rainfall across the same Lido period")
     axes[1].set_ylabel("Rainfall (mm)")
     axes[1].grid(alpha=0.25, linestyle="--")
@@ -345,7 +363,15 @@ def render():
             add_categorical_map(fmap, merged.rename(columns={"value": field}), field, CLASS_PALETTE)
             st_folium(fmap, use_container_width=True, height=470)
             standards_scatter(samples, site_order)
-            hbar(standards[["site", p95]].rename(columns={p95: "value"}), "site", "value", f"Key site comparison: {indicator} 95th percentile", "#d67f33" if indicator_key == "eColi" else "#2f6f97")
+            hbar(
+                standards[["site", p95]].rename(columns={p95: "value"}),
+                "site",
+                "value",
+                f"Key site comparison: {indicator} 95th percentile",
+                "#d67f33" if indicator_key == "eColi" else "#2f6f97",
+                "cfu / 100 ml",
+                f"Bars show the {indicator} 95th percentile at each site in cfu / 100 ml.",
+            )
 
         elif mode == "Along the river":
             field = "deltaFromUpstreamEColi" if indicator_key == "eColi" else "deltaFromUpstreamIE"
@@ -354,7 +380,15 @@ def render():
             add_continuous_map(fmap, merged, field, diverging=True, caption="Delta from upstream")
             st_folium(fmap, use_container_width=True, height=470)
             line_and_bar_river(spatial)
-            hbar(spatial[["site", field]], "site", field, f"Key site comparison: {indicator} delta from Pateley Bridge", "#d85f49" if indicator_key == "eColi" else "#7a5af8")
+            hbar(
+                spatial[["site", field]],
+                "site",
+                field,
+                f"Key site comparison: {indicator} delta from Pateley Bridge",
+                "#d85f49" if indicator_key == "eColi" else "#7a5af8",
+                "cfu / 100 ml",
+                "Bars show each site's mean bacteria value minus the Pateley Bridge baseline.",
+            )
 
         elif mode == "Environmental drivers":
             if driver == "Recent rainfall":
@@ -369,14 +403,30 @@ def render():
                 fmap = make_map(locations, title)
                 add_continuous_map(fmap, merged, field, diverging=True, caption="Delta from dry baseline")
                 st_folium(fmap, use_container_width=True, height=470)
-                hbar(rainfall[["site", field]], "site", field, f"Key site comparison: {indicator} {rainfall_condition.lower()} minus dry", "#d67f33" if indicator_key == "eColi" else "#2f6f97")
+                hbar(
+                    rainfall[["site", field]],
+                    "site",
+                    field,
+                    f"Key site comparison: {indicator} {rainfall_condition.lower()} minus dry",
+                    "#d67f33" if indicator_key == "eColi" else "#2f6f97",
+                    "cfu / 100 ml",
+                    f"Bars show mean {indicator} under {rainfall_condition.lower()} conditions minus the dry baseline.",
+                )
             else:
                 field = "highLowDeltaEColi" if indicator_key == "eColi" else "highLowDeltaIE"
                 merged = merge_map_df(locations, river_level, field)
                 fmap = make_map(locations, f"{indicator} response to river level")
                 add_continuous_map(fmap, merged, field, diverging=True, caption="Delta between flow groups")
                 st_folium(fmap, use_container_width=True, height=470)
-                hbar(river_level[["site", field]], "site", field, f"Key site comparison: {indicator} high-level minus low-level", "#23695a" if indicator_key == "eColi" else "#2f6f97")
+                hbar(
+                    river_level[["site", field]],
+                    "site",
+                    field,
+                    f"Key site comparison: {indicator} high-level minus low-level",
+                    "#23695a" if indicator_key == "eColi" else "#2f6f97",
+                    "cfu / 100 ml",
+                    f"Bars show mean {indicator} under higher river level minus lower river level conditions.",
+                )
 
         elif mode == "Case snapshot":
             case_df = pd.DataFrame({"site": site_order, "focus": ["Case site" if site == "Knaresborough Lido" else "Context site" for site in site_order]})
@@ -392,7 +442,15 @@ def render():
                 {"label": "20 Aug IE", "value": compare["20/08/2025"]["ie"]},
                 {"label": "16 Sep IE", "value": compare["16/09/2025"]["ie"]},
             ])
-            hbar(compare_frame, "label", "value", "Key site comparison: Knaresborough Lido on 20 Aug vs 16 Sep", "#d67f33")
+            hbar(
+                compare_frame,
+                "label",
+                "value",
+                "Key site comparison: Knaresborough Lido on 20 Aug vs 16 Sep",
+                "#d67f33",
+                "cfu / 100 ml",
+                "Bars compare the measured bacteria levels at Knaresborough Lido on 20 Aug and 16 Sep.",
+            )
 
         else:
             merged = merge_map_df(locations, mst.rename(columns={"dominantMarker": "value"}), "value")
@@ -406,17 +464,31 @@ def render():
         if mode == "Standards":
             row = standards.loc[standards["site"] == "Knaresborough Lido"].iloc[0]
             st.metric("Lido class", f"{row['eColiClass']} / {row['ieClass']}")
-            st.metric(f"{indicator} 95th percentile at Lido", f"{row['eColiP95']:.0f}" if indicator_key == "eColi" else f"{row['ieP95']:.0f}")
-            st.dataframe(standards[["site", "eColiClass", "ieClass", "eColiP95", "ieP95"]], use_container_width=True, hide_index=True)
+            st.metric(
+                f"{indicator} 95th percentile at Lido",
+                format_unit_value(row["eColiP95"] if indicator_key == "eColi" else row["ieP95"], "cfu / 100 ml", 0),
+            )
+            standards_table = standards[["site", "eColiClass", "ieClass", "eColiP95", "ieP95"]].rename(
+                columns={"eColiP95": "E. coli p95 (cfu / 100 ml)", "ieP95": "IE p95 (cfu / 100 ml)"}
+            )
+            st.dataframe(standards_table, use_container_width=True, hide_index=True)
 
         elif mode == "Along the river":
             hotspot = spatial.loc[spatial["meanEColi"].idxmax(), "site"]
             st.metric("Most upstream baseline", site_order[0])
             st.metric("Strongest E. coli hotspot", hotspot)
             lido = spatial.loc[spatial["site"] == "Knaresborough Lido"].iloc[0]
-            st.metric("Lido E. coli delta", f"{lido['deltaFromUpstreamEColi']:.1f}")
-            st.metric("Lido IE delta", f"{lido['deltaFromUpstreamIE']:.1f}")
-            st.dataframe(spatial, use_container_width=True, hide_index=True)
+            st.metric("Lido E. coli delta", format_unit_value(lido["deltaFromUpstreamEColi"], "cfu / 100 ml"))
+            st.metric("Lido IE delta", format_unit_value(lido["deltaFromUpstreamIE"], "cfu / 100 ml"))
+            spatial_table = spatial.rename(
+                columns={
+                    "meanEColi": "Mean E. coli (cfu / 100 ml)",
+                    "meanIE": "Mean IE (cfu / 100 ml)",
+                    "deltaFromUpstreamEColi": "E. coli delta (cfu / 100 ml)",
+                    "deltaFromUpstreamIE": "IE delta (cfu / 100 ml)",
+                }
+            )
+            st.dataframe(spatial_table, use_container_width=True, hide_index=True)
 
         elif mode == "Environmental drivers":
             if driver == "Recent rainfall":
@@ -431,33 +503,50 @@ def render():
                 count_key = "someRainCount" if rainfall_condition == "Some rain" else "highRainCount"
                 st.metric("Strongest rain response", strongest["site"])
                 st.metric(f"{rainfall_condition} samples at strongest site", int(strongest[count_key]))
-                st.metric(f"{indicator} delta at strongest site", f"{strongest[field]:.1f}")
-                st.dataframe(rainfall[["site", "dryCount", "someRainCount", "highRainCount", field]], use_container_width=True, hide_index=True)
+                st.metric(f"{indicator} delta at strongest site", format_unit_value(strongest[field], "cfu / 100 ml"))
+                rain_table = rainfall[["site", "dryCount", "someRainCount", "highRainCount", field]].rename(
+                    columns={field: f"{indicator} delta (cfu / 100 ml)"}
+                )
+                st.dataframe(rain_table, use_container_width=True, hide_index=True)
             else:
                 field = "highLowDeltaEColi" if indicator_key == "eColi" else "highLowDeltaIE"
                 strongest = river_level.sort_values(field, ascending=False).iloc[0]
                 st.metric("Strongest river-level response", strongest["site"])
                 st.metric("High-level samples at strongest site", int(strongest["highLevelCount"]))
-                st.metric(f"{indicator} delta at strongest site", f"{strongest[field]:.1f}")
-                st.dataframe(river_level[["site", "lowLevelCount", "highLevelCount", field]], use_container_width=True, hide_index=True)
+                st.metric(f"{indicator} delta at strongest site", format_unit_value(strongest[field], "cfu / 100 ml"))
+                level_table = river_level[["site", "lowLevelCount", "highLevelCount", field]].rename(
+                    columns={field: f"{indicator} delta (cfu / 100 ml)"}
+                )
+                st.dataframe(level_table, use_container_width=True, hide_index=True)
 
         elif mode == "Case snapshot":
             compare = payload["analysis"]["lidoCaseCompare"]
             ecoli_delta = compare["16/09/2025"]["eColi"] - compare["20/08/2025"]["eColi"]
             ie_delta = compare["16/09/2025"]["ie"] - compare["20/08/2025"]["ie"]
-            st.metric("E. coli change", f"{ecoli_delta:.1f}")
-            st.metric("IE change", f"{ie_delta:.1f}")
-            st.write("Short-term risk can shift fast, even at one site.")
-            st.dataframe(lido_case[["date", "eColi", "ie", "rain72h", "riverLevel"]], use_container_width=True, hide_index=True)
+            st.caption("Short-term risk can shift fast, even at one site.")
+            st.metric("E. coli change", format_unit_value(ecoli_delta, "cfu / 100 ml"))
+            st.metric("IE change", format_unit_value(ie_delta, "cfu / 100 ml"))
+            case_table = lido_case[["date", "eColi", "ie", "rain72h", "riverLevel"]].rename(
+                columns={
+                    "eColi": "E. coli (cfu / 100 ml)",
+                    "ie": "IE (cfu / 100 ml)",
+                    "rain72h": "3-day rainfall (mm)",
+                    "riverLevel": "River level (m)",
+                }
+            )
+            st.dataframe(case_table, use_container_width=True, hide_index=True)
 
         else:
             snapshot = next(item for item in payload["mstSnapshots"] if item["date"] == mst_date)
             st.metric("Selected MST date", snapshot["date"])
             st.metric("Sites in snapshot", snapshot["siteCount"])
-            st.metric("Mean Hubac", f"{snapshot['meanHubac']:.1f}")
-            st.metric("Mean Rubac", f"{snapshot['meanRubac']:.1f}")
+            st.metric("Mean Hubac", format_unit_value(snapshot["meanHubac"], "marker units"))
+            st.metric("Mean Rubac", format_unit_value(snapshot["meanRubac"], "marker units"))
             st.write("MST adds source clues, not proof.")
-            st.dataframe(mst[["site", "meanHubac", "meanRubac", "dominantMarker"]], use_container_width=True, hide_index=True)
+            mst_table = mst[["site", "meanHubac", "meanRubac", "dominantMarker"]].rename(
+                columns={"meanHubac": "Mean Hubac (marker units)", "meanRubac": "Mean Rubac (marker units)"}
+            )
+            st.dataframe(mst_table, use_container_width=True, hide_index=True)
 
 
 if __name__ == "__main__":
