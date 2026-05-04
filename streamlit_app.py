@@ -197,6 +197,20 @@ def add_categorical_map(fmap: folium.Map, merged: pd.DataFrame, field: str, pale
                 fill=False,
             ).add_to(fmap)
         add_marker_number(fmap, row["lat"], row["lon"], number)
+    legend_rows = "".join(
+        f"<div style='display:flex;align-items:center;gap:8px;margin:4px 0;'>"
+        f"<span style='display:inline-block;width:12px;height:12px;border-radius:50%;background:{color};'></span>"
+        f"<span>{label}</span></div>"
+        for label, color in palette.items()
+    )
+    legend_html = (
+        "<div style='position: fixed; bottom: 28px; left: 28px; z-index: 9999; "
+        "background: rgba(255,255,255,0.94); border: 1px solid #cfc7ba; border-radius: 10px; "
+        "padding: 10px 12px; font-size: 12px; box-shadow: 0 4px 14px rgba(0,0,0,0.12);'>"
+        "<div style='font-weight:700;margin-bottom:6px;'>Legend</div>"
+        f"{legend_rows}</div>"
+    )
+    fmap.get_root().html.add_child(folium.Element(legend_html))
 
 
 def add_continuous_map(fmap: folium.Map, merged: pd.DataFrame, field: str, diverging: bool, caption: str, highlight_site: str | None = None):
@@ -266,6 +280,13 @@ def standards_scatter(samples: pd.DataFrame, site_order: list[str]):
         ax.grid(alpha=0.25, linestyle="--")
     axes[1].set_xticks(range(len(site_order)))
     axes[1].set_xticklabels(site_order, rotation=20)
+    legend_handles = [
+        plt.Line2D([0], [0], color="#2f6f97", linestyle="--", linewidth=2, label="Good threshold"),
+        plt.Line2D([0], [0], color="#d67f33", linestyle="--", linewidth=2, label="Sufficient threshold"),
+        plt.Line2D([0], [0], marker="o", linestyle="", markerfacecolor="white", markeredgecolor="black", markersize=7, label="90th percentile"),
+        plt.Line2D([0], [0], marker="s", linestyle="", color="black", markersize=7, label="95th percentile"),
+    ]
+    axes[0].legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=False)
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
 
