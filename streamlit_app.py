@@ -72,10 +72,10 @@ def indicator_label(indicator: str) -> str:
 
 def audience_class_label(value: str) -> str:
     return {
-        "Excellent": "lowest threshold risk in this dataset",
-        "Good": "within the good threshold band",
-        "Sufficient": "within the sufficient threshold band",
-        "Poor": "above the bathing water threshold",
+        "Excellent": "lowest bacteria-threshold band",
+        "Good": "within the good bacteria band",
+        "Sufficient": "within the sufficient bacteria band",
+        "Poor": "above the bacteria threshold",
     }.get(value, value)
 
 
@@ -337,7 +337,7 @@ def render():
         st.header("Controls")
         mode = st.radio(
             "Analysis mode",
-            ["Thresholds", "Along the river", "Environmental drivers", "Location snapshot", "Source clues"],
+            ["Bacteria thresholds", "Along the river", "Environmental drivers", "Location snapshot", "Source clues"],
         )
         indicator = st.radio("Bacteria indicator", ["E. coli", "IE"], horizontal=True)
         indicator_key = "eColi" if indicator == "E. coli" else "ie"
@@ -354,7 +354,7 @@ def render():
 
         st.subheader("Method")
         for line in [
-            "Thresholds mode uses inland bathing-water thresholds from the provided guide.",
+            "Bacteria thresholds mode uses inland bathing-water thresholds from the provided guide.",
             "Sufficient uses the 90th percentile; Good and Excellent use the 95th percentile.",
             f"Only samples on or after {payload['story']['dateCutoff']} are included.",
             "Rainfall response uses the first available 3-day rainfall field.",
@@ -364,11 +364,11 @@ def render():
     left, right = st.columns([1.55, 1])
 
     with left:
-        if mode == "Thresholds":
+        if mode == "Bacteria thresholds":
             field = "eColiClass" if indicator_key == "eColi" else "ieClass"
             p95 = "eColiP95" if indicator_key == "eColi" else "ieP95"
             merged = merge_map_df(locations, standards.rename(columns={field: "value"}), "value")
-            fmap = make_map(locations, f"{indicator} against bathing water thresholds")
+            fmap = make_map(locations, f"{indicator} against bacteria bathing-water thresholds")
             add_categorical_map(fmap, merged.rename(columns={"value": field}), field, CLASS_PALETTE)
             st_folium(fmap, use_container_width=True, height=470)
             standards_scatter(samples, site_order)
@@ -470,12 +470,19 @@ def render():
 
     with right:
         st.subheader("Supporting summary")
-        if mode == "Thresholds":
-            row = standards.loc[standards["site"] == "Knaresborough Lido"].iloc[0]
-            st.metric("Lido threshold status", audience_class_label(row["eColiClass"]) if indicator_key == "eColi" else audience_class_label(row["ieClass"]))
+        if mode == "Bacteria thresholds":
+            class_col = "eColiClass" if indicator_key == "eColi" else "ieClass"
+            p95_col = "eColiP95" if indicator_key == "eColi" else "ieP95"
+            class_counts = standards[class_col].value_counts()
+            top_band = class_counts.idxmax()
+            top_count = int(class_counts.max())
+            max_row = standards.sort_values(p95_col, ascending=False).iloc[0]
+            st.metric("Most common threshold band", audience_class_label(top_band))
+            st.metric("Sites in that band", top_count)
+            st.metric("Highest site 95th percentile", max_row["site"])
             st.metric(
-                f"{indicator} 95th percentile at Lido",
-                format_unit_value(row["eColiP95"] if indicator_key == "eColi" else row["ieP95"], "cfu / 100 ml", 0),
+                f"Highest {indicator} 95th percentile",
+                format_unit_value(max_row[p95_col], "cfu / 100 ml", 0),
             )
             standards_table = standards[["site", "eColiClass", "ieClass", "eColiP95", "ieP95"]].rename(
                 columns={
