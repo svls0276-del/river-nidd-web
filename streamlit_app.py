@@ -79,6 +79,15 @@ def audience_class_label(value: str) -> str:
     }.get(value, value)
 
 
+def short_class_label(value: str) -> str:
+    return {
+        "Excellent": "Excellent",
+        "Good": "Good",
+        "Sufficient": "Sufficient",
+        "Poor": "Above threshold",
+    }.get(value, value)
+
+
 def format_unit_value(value, unit: str = "", digits: int = 1) -> str:
     if value is None or pd.isna(value):
         return "n/a"
@@ -477,7 +486,8 @@ def render():
             top_band = class_counts.idxmax()
             top_count = int(class_counts.max())
             max_row = standards.sort_values(p95_col, ascending=False).iloc[0]
-            st.metric("Most common threshold band", audience_class_label(top_band))
+            st.metric("Most common threshold band", short_class_label(top_band))
+            st.caption(audience_class_label(top_band))
             st.metric("Sites in that band", top_count)
             st.metric("Highest site 95th percentile", max_row["site"])
             st.metric(
