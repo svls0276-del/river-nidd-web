@@ -244,10 +244,15 @@ def add_continuous_map(fmap: folium.Map, merged: pd.DataFrame, field: str, diver
     cmap.add_to(fmap)
 
 
-def hbar(frame: pd.DataFrame, label_col: str, value_col: str, title: str, color: str, unit_label: str, note: str):
+def hbar(frame: pd.DataFrame, label_col: str, value_col: str, title: str, color, unit_label: str, note: str):
     fig, ax = plt.subplots(figsize=(7, 3.6))
     ordered = frame.sort_values(value_col)
-    ax.barh(ordered[label_col], ordered[value_col], color=color)
+    if isinstance(color, str):
+        colors = color
+    else:
+        color_map = dict(zip(frame[label_col], color))
+        colors = [color_map[label] for label in ordered[label_col]]
+    ax.barh(ordered[label_col], ordered[value_col], color=colors)
     ax.set_title(title)
     ax.axvline(0, color="#222222", linewidth=1)
     ax.set_xlabel(unit_label)
@@ -289,6 +294,7 @@ def standards_scatter(samples: pd.DataFrame, site_order: list[str]):
     axes[0].legend(handles=legend_handles, loc="upper left", bbox_to_anchor=(1.01, 1.0), frameon=False)
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
+    st.caption("Dots show individual samples by site; dashed lines show the good and sufficient threshold levels.")
 
 
 def line_and_bar_river(spatial: pd.DataFrame):
@@ -310,6 +316,7 @@ def line_and_bar_river(spatial: pd.DataFrame):
     fig.tight_layout()
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
+    st.caption("The top row shows mean bacteria levels by site, and the bottom row shows change relative to the upstream baseline.")
 
 
 def case_charts(lido_case: pd.DataFrame):
@@ -338,6 +345,7 @@ def case_charts(lido_case: pd.DataFrame):
     fig.tight_layout()
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
+    st.caption("The red dashed line marks the highest bacteria day in this Lido time series.")
 
 
 def mst_bars(mst: pd.DataFrame):
@@ -353,6 +361,7 @@ def mst_bars(mst: pd.DataFrame):
     fig.tight_layout()
     st.pyplot(fig, use_container_width=True)
     plt.close(fig)
+    st.caption("These bars compare the average Hubac and Rubac marker signals across sites.")
 
 
 def render():
@@ -401,6 +410,7 @@ def render():
             fmap = make_map(locations, f"{indicator} against bacteria bathing-water thresholds")
             add_categorical_map(fmap, merged.rename(columns={"value": field}), field, CLASS_PALETTE)
             st_folium(fmap, use_container_width=True, height=470)
+            st.caption("Map colours show how each site sits within the bacteria threshold bands.")
             standards_scatter(samples, site_order)
             hbar(
                 standards[["site", p95]].rename(columns={p95: "value"}),
@@ -418,6 +428,7 @@ def render():
             fmap = make_map(locations, f"{indicator} change from upstream baseline")
             add_continuous_map(fmap, merged, field, diverging=True, caption="Delta from upstream")
             st_folium(fmap, use_container_width=True, height=470)
+            st.caption("Map colours show how far each site is above or below the upstream baseline.")
             line_and_bar_river(spatial)
             hbar(
                 spatial[["site", field]],
@@ -442,6 +453,7 @@ def render():
                 fmap = make_map(locations, title)
                 add_continuous_map(fmap, merged, field, diverging=True, caption="Delta from dry baseline")
                 st_folium(fmap, use_container_width=True, height=470)
+                st.caption("Map colours show how much bacteria levels increase or decrease compared with dry conditions.")
                 hbar(
                     rainfall[["site", field]],
                     "site",
@@ -457,6 +469,7 @@ def render():
                 fmap = make_map(locations, f"{indicator} response to river level")
                 add_continuous_map(fmap, merged, field, diverging=True, caption="Delta between flow groups")
                 st_folium(fmap, use_container_width=True, height=470)
+                st.caption("Map colours show how much bacteria levels change between higher-flow and lower-flow conditions.")
                 hbar(
                     river_level[["site", field]],
                     "site",
@@ -473,6 +486,7 @@ def render():
             fmap = make_map(locations, "Location snapshot: Knaresborough Lido in River Nidd context")
             add_categorical_map(fmap, merged, "focus", {"Case site": "#d67f33", "Context site": "#8fa2a0"}, highlight_site="Knaresborough Lido")
             st_folium(fmap, use_container_width=True, height=470)
+            st.caption("The map keeps the river context but highlights the study location, Knaresborough Lido.")
             case_charts(lido_case)
             compare = payload["analysis"]["lidoCaseCompare"]
             compare_frame = pd.DataFrame([
@@ -486,7 +500,12 @@ def render():
                 "label",
                 "value",
                 "Key site comparison: Knaresborough Lido on 20 Aug vs 16 Sep",
-                "#d67f33",
+                {
+                    "20 Aug E. coli": "#f4b183",
+                    "16 Sep E. coli": "#d67f33",
+                    "20 Aug IE": "#9db7d5",
+                    "16 Sep IE": "#2f6f97",
+                },
                 "cfu / 100 ml",
                 "Bars compare the measured bacteria levels at Knaresborough Lido on 20 Aug and 16 Sep.",
             )
@@ -496,6 +515,7 @@ def render():
             fmap = make_map(locations, "MST source clues")
             add_categorical_map(fmap, merged.rename(columns={"value": "dominantMarker"}), "dominantMarker", MST_PALETTE)
             st_folium(fmap, use_container_width=True, height=470)
+            st.caption("Map colours show which MST marker is stronger on average at each site.")
             mst_bars(mst)
 
     with right:
