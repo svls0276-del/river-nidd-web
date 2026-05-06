@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import folium
@@ -14,7 +13,11 @@ from streamlit_folium import st_folium
 
 
 ROOT = Path(__file__).resolve().parent
-DATA_JS = ROOT / "web" / "data.js"
+FINAL_CLEANED = ROOT / "final_cleaned.csv"
+FULL_CLEANED = ROOT / "cleaned2.csv"
+MST_CLEANED = ROOT / "mst_samples_cleaned.csv"
+LOCATIONS_CSV = ROOT / "sample_locations.csv"
+DATE_CUTOFF = pd.Timestamp("2025-03-01")
 st.set_page_config(page_title="River Nidd Streamlit Backup", layout="wide")
 
 SITE_PALETTE = {
@@ -38,31 +41,229 @@ MST_PALETTE = {
 TRANSFORMER = Transformer.from_crs("EPSG:27700", "EPSG:4326", always_xy=True)
 
 
-def load_payload() -> dict:
-    text = DATA_JS.read_text(encoding="utf-8")
-    return json.loads(text.split("=", 1)[1].rsplit(";", 1)[0].strip())
+def first_existing_column(df: pd.DataFrame, names: list[str]) -> str | None:
+    for name in names:
+        if name in df.columns:
+            return name
+    return None
+
+
+def clean_mst_site(site: str) -> str:
+    site = str(site).strip().replace("Nidd @ ", "")
+    return "Knaresborough Lido" if site == "Lido" else site
+
+
+def percentile(series: pd.Series, fraction: float):
+    values = series.dropna().sort_values().to_numpy(dtype=float)
+    if len(values) == 0:
+        return np.nan
+    if len(values) == 1:
+        return values[0]
+    index = (len(values) - 1) * fraction
+    lower = int(np.floor(index))
+    upper = min(lower + 1, len(values) - 1)
+    weight = index - lower
+    return values[lower] * (1 - weight) + values[upper] * weight
+
+
+def classify_site(p90: float, p95: float, indicator: str) -> str:
+    thresholds = {
+        "eColi": {"excellent95": 500, "good95": 1000, "sufficient90": 900},
+        "ie": {"excellent95": 200, "good95": 400, "sufficient90": 330},
+    }[indicator]
+    if pd.notna(p95) and p95 <= thresholds["excellent95"]:
+        return "Excellent"
+    if pd.notna(p95) and p95 <= thresholds["good95"]:
+        return "Good"
+    if pd.notna(p90) and p90 <= thresholds["sufficient90"]:
+        return "Sufficient"
+    return "Poor"
+
+
+def rainfall_bucket_72h(value):
+    if pd.isna(value):
+        return "unknown"
+    if value == 0:
+        return "dry"
+    if value <= 5:
+        return "some-rain"
+    return "high-rain"
 
 
 @st.cache_data
 def load_frames():
-    payload = load_payload()
-    locations = pd.DataFrame(payload["locations"]).sort_values("y", ascending=False).reset_index(drop=True)
+    locations = pd.read_csv(LOCATIONS_CSV).rename(columns={"Site": "site", "X": "x", "Y": "y"})
+    locations["site"] = locations["site"].str.strip()
+    locations = locations.sort_values("y", ascending=False).reset_index(drop=True)
     lon, lat = TRANSFORMER.transform(locations["x"].to_numpy(), locations["y"].to_numpy())
     locations["lon"] = lon
     locations["lat"] = lat
+    site_order = locations["site"].tolist()
 
-    standards = pd.DataFrame(payload["analysis"]["standardsBySite"]).sort_values("siteRank").reset_index(drop=True)
-    spatial = pd.DataFrame(payload["analysis"]["spatialGradient"]).sort_values("siteRank").reset_index(drop=True)
-    rainfall = pd.DataFrame(payload["analysis"]["rainfallResponseBySite"]).sort_values("siteRank").reset_index(drop=True)
-    river_level = pd.DataFrame(payload["analysis"]["riverLevelBySite"]).sort_values("siteRank").reset_index(drop=True)
-    mst = pd.DataFrame(payload["analysis"]["mstBySite"]).sort_values("siteRank").reset_index(drop=True)
-    site_summaries = pd.DataFrame(payload["siteSummaries"]).sort_values("siteRank").reset_index(drop=True)
-    samples = pd.DataFrame(payload["samples"])
-    if not samples.empty:
-        samples["date_dt"] = pd.to_datetime(samples["date"], dayfirst=True)
-    lido_case = pd.DataFrame(payload["analysis"]["lidoCaseTimeline"])
-    if not lido_case.empty:
-        lido_case["date_dt"] = pd.to_datetime(lido_case["date"], dayfirst=True)
+    balanced = pd.read_csv(FINAL_CLEANED)
+    balanced["site"] = balanced["site"].str.strip()
+    balanced["date_dt"] = pd.to_datetime(balanced["date"], dayfirst=True)
+    balanced = balanced.loc[balanced["date_dt"] >= DATE_CUTOFF].copy()
+    rain72_col = first_existing_column(balanced, ["Rainfall.3_day_sum_mm", "rainfall.3_day_sum_mm", "Rainfall_72h_sum_mm"])
+    balanced["rain72h"] = pd.to_numeric(balanced[rain72_col], errors="coerce")
+    balanced["rainResponseBucket"] = balanced["rain72h"].apply(rainfall_bucket_72h)
+
+    samples = balanced.rename(
+        columns={
+            "e_coli_capped": "eColi",
+            "ie_capped": "ie",
+            "river_level": "riverLevel",
+            "sample_type": "sampleType",
+            "log_e_coli_capped": "logEColi",
+            "log_ie_capped": "logIE",
+        }
+    ).copy()
+
+    standards_rows = []
+    for site, group in balanced.groupby("site"):
+        e_p90 = percentile(group["e_coli_capped"], 0.90)
+        e_p95 = percentile(group["e_coli_capped"], 0.95)
+        ie_p90 = percentile(group["ie_capped"], 0.90)
+        ie_p95 = percentile(group["ie_capped"], 0.95)
+        standards_rows.append(
+            {
+                "site": site,
+                "eColiP90": e_p90,
+                "eColiP95": e_p95,
+                "eColiClass": classify_site(e_p90, e_p95, "eColi"),
+                "ieP90": ie_p90,
+                "ieP95": ie_p95,
+                "ieClass": classify_site(ie_p90, ie_p95, "ie"),
+            }
+        )
+    standards = pd.DataFrame(standards_rows)
+    standards["site"] = pd.Categorical(standards["site"], categories=site_order, ordered=True)
+    standards = standards.sort_values("site").reset_index(drop=True)
+
+    spatial = (
+        balanced.groupby("site")[["e_coli_capped", "ie_capped"]]
+        .mean()
+        .reindex(site_order)
+        .reset_index()
+        .rename(columns={"e_coli_capped": "meanEColi", "ie_capped": "meanIE"})
+    )
+    upstream_ecoli = spatial.loc[0, "meanEColi"]
+    upstream_ie = spatial.loc[0, "meanIE"]
+    spatial["deltaFromUpstreamEColi"] = spatial["meanEColi"] - upstream_ecoli
+    spatial["deltaFromUpstreamIE"] = spatial["meanIE"] - upstream_ie
+
+    rainfall_rows = []
+    for site, group in balanced.groupby("site"):
+        dry = group.loc[group["rainResponseBucket"] == "dry"]
+        some = group.loc[group["rainResponseBucket"] == "some-rain"]
+        high = group.loc[group["rainResponseBucket"] == "high-rain"]
+        dry_e = dry["e_coli_capped"].mean()
+        some_e = some["e_coli_capped"].mean()
+        high_e = high["e_coli_capped"].mean()
+        dry_ie = dry["ie_capped"].mean()
+        some_ie = some["ie_capped"].mean()
+        high_ie = high["ie_capped"].mean()
+        rainfall_rows.append(
+            {
+                "site": site,
+                "dryCount": len(dry),
+                "someRainCount": len(some),
+                "highRainCount": len(high),
+                "someRainDeltaEColi": some_e - dry_e if pd.notna(some_e) and pd.notna(dry_e) else np.nan,
+                "highRainDeltaEColi": high_e - dry_e if pd.notna(high_e) and pd.notna(dry_e) else np.nan,
+                "someRainDeltaIE": some_ie - dry_ie if pd.notna(some_ie) and pd.notna(dry_ie) else np.nan,
+                "highRainDeltaIE": high_ie - dry_ie if pd.notna(high_ie) and pd.notna(dry_ie) else np.nan,
+            }
+        )
+    rainfall = pd.DataFrame(rainfall_rows)
+    rainfall["site"] = pd.Categorical(rainfall["site"], categories=site_order, ordered=True)
+    rainfall = rainfall.sort_values("site").reset_index(drop=True)
+
+    river_threshold = balanced["river_level"].median()
+    balanced["riverLevelBucket"] = np.where(balanced["river_level"] > river_threshold, "high-level", "low-level")
+    river_rows = []
+    for site, group in balanced.groupby("site"):
+        low = group.loc[group["riverLevelBucket"] == "low-level"]
+        high = group.loc[group["riverLevelBucket"] == "high-level"]
+        low_e = low["e_coli_capped"].mean()
+        high_e = high["e_coli_capped"].mean()
+        low_ie = low["ie_capped"].mean()
+        high_ie = high["ie_capped"].mean()
+        river_rows.append(
+            {
+                "site": site,
+                "lowLevelCount": len(low),
+                "highLevelCount": len(high),
+                "highLowDeltaEColi": high_e - low_e if pd.notna(high_e) and pd.notna(low_e) else np.nan,
+                "highLowDeltaIE": high_ie - low_ie if pd.notna(high_ie) and pd.notna(low_ie) else np.nan,
+            }
+        )
+    river_level = pd.DataFrame(river_rows)
+    river_level["site"] = pd.Categorical(river_level["site"], categories=site_order, ordered=True)
+    river_level = river_level.sort_values("site").reset_index(drop=True)
+
+    full = pd.read_csv(FULL_CLEANED)
+    full["site"] = full["site"].str.strip()
+    full["date_dt"] = pd.to_datetime(full["date"], dayfirst=True)
+    rain72_full_col = first_existing_column(full, ["Rainfall.3_day_sum_mm", "rainfall.3_day_sum_mm", "Rainfall_72h_sum_mm"])
+    full["rain72h"] = pd.to_numeric(full[rain72_full_col], errors="coerce")
+    lido_case = full.loc[
+        (full["site"] == "Knaresborough Lido")
+        & (full["date_dt"] >= pd.Timestamp("2025-08-01"))
+        & (full["date_dt"] < pd.Timestamp("2025-10-01"))
+    ].copy()
+    lido_case = lido_case.sort_values("date_dt").rename(
+        columns={"e_coli_capped": "eColi", "ie_capped": "ie", "river_level": "riverLevel"}
+    )
+    lido_case_compare = {}
+    for date_text in ["20/08/2025", "16/09/2025"]:
+        match = lido_case.loc[lido_case["date"] == date_text]
+        if not match.empty:
+            row = match.iloc[0]
+            lido_case_compare[date_text] = {
+                "eColi": row["eColi"],
+                "ie": row["ie"],
+                "rain72h": row["rain72h"],
+                "riverLevel": row["riverLevel"],
+            }
+
+    mst_raw = pd.read_csv(MST_CLEANED)
+    mst_raw["site"] = mst_raw["Site"].apply(clean_mst_site)
+    mst_raw["date_dt"] = pd.to_datetime(mst_raw["Date"], dayfirst=True)
+    mst_raw["Hubac"] = pd.to_numeric(mst_raw["Hubac"], errors="coerce")
+    mst_raw["Rubac"] = pd.to_numeric(mst_raw["Rubac"], errors="coerce")
+    mst = (
+        mst_raw.groupby("site")[["Hubac", "Rubac"]]
+        .mean()
+        .reindex(site_order)
+        .reset_index()
+        .rename(columns={"Hubac": "meanHubac", "Rubac": "meanRubac"})
+    )
+    mst["dominantMarker"] = np.where(
+        mst["meanHubac"] > mst["meanRubac"],
+        "Hubac",
+        np.where(mst["meanRubac"] > mst["meanHubac"], "Rubac", "Mixed"),
+    )
+    mst_snapshots = []
+    for date_text, group in sorted(mst_raw.groupby("Date"), key=lambda pair: pd.to_datetime(pair[0], dayfirst=True)):
+        mst_snapshots.append(
+            {
+                "date": date_text,
+                "siteCount": group["site"].nunique(),
+                "meanHubac": group["Hubac"].mean(),
+                "meanRubac": group["Rubac"].mean(),
+            }
+        )
+
+    payload = {
+        "story": {
+            "researchQuestion": "This case study uses River Nidd bacteria, rainfall and bathing-water threshold evidence to show how recent weather can change local swimming risk from site to site.",
+            "dateCutoff": DATE_CUTOFF.date().isoformat(),
+        },
+        "analysis": {"lidoCaseCompare": lido_case_compare},
+        "mstSnapshots": mst_snapshots,
+    }
+    site_summaries = spatial.merge(locations[["site", "x", "y"]], on="site", how="left")
     return payload, locations, standards, spatial, rainfall, river_level, mst, site_summaries, samples, lido_case
 
 
